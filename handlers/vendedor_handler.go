@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"automarket/auth"
+	"automarket/middleware"
 	"automarket/models"
 	"automarket/repository"
 
@@ -88,24 +89,33 @@ func RegistrarVendedor(c *gin.Context) {
 	})
 }
 
-// PublicarVehiculo registra un vehículo en estado pendiente de aprobación (HU-VEN-01).
+// PublicarVehiculo registra un vehículo en estado pendiente de aprobación,
+// asociado al vendedor autenticado (HU-VEN-01).
 func PublicarVehiculo(c *gin.Context) {
-	// 1. Leer y validar el JSON recibido.
+	// 1. Obtener el vendedor autenticado.
+	//    La ruta ya está protegida, pero si por error se configurara sin
+	//    autenticación, negamos la operación en lugar de seguir ("fallar cerrado").
+	vendedor, autenticado := middleware.UsuarioActual(c)
+	if !autenticado {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "autenticación requerida"})
+		return
+	}
+
+	// 2. Leer y validar el JSON recibido.
 	var solicitud solicitudPublicacion
 	if err := c.ShouldBindJSON(&solicitud); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "datos inválidos"})
 		return
 	}
 
-	// 2. Guardar el vehículo. El estado siempre inicia en pendiente.
+	// 3. Guardar el vehículo. El estado siempre inicia en pendiente y el
+	//    vendedor es quien se autenticó, nunca un dato enviado por el cliente.
 	vehiculo := repository.DB.GuardarVehiculo(models.Vehiculo{
-		Marca:  solicitud.Marca,
-		Modelo: solicitud.Modelo,
-		Precio: solicitud.Precio,
-		Estado: models.EstadoPendiente,
-		// TEMPORAL: cuando la autenticación esté conectada, aquí irá
-		// el ID del vendedor autenticado en lugar del valor fijo 1.
-		VendedorID: 1,
+		Marca:      solicitud.Marca,
+		Modelo:     solicitud.Modelo,
+		Precio:     solicitud.Precio,
+		Estado:     models.EstadoPendiente,
+		VendedorID: vendedor.ID,
 	})
 
 	c.JSON(http.StatusCreated, gin.H{
