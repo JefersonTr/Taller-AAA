@@ -4,6 +4,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"automarket/auth"
 	"automarket/middleware"
@@ -124,8 +125,65 @@ func PublicarVehiculo(c *gin.Context) {
 	})
 }
 
-// ReportarVenta cambiará el estado de un vehículo del vendedor a vendido.
-// Mientras no esté implementada, responde 501 en lugar de simular un éxito.
+// ReportarVenta marca como vendido un vehículo publicado del vendedor
+// autenticado, lo que lo retira del catálogo.
 func ReportarVenta(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "funcionalidad en desarrollo"})
+	// 1. Obtener el vendedor autenticado ("fallar cerrado" si no lo hay).
+	vendedor, autenticado := middleware.UsuarioActual(c)
+	if !autenticado {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "autenticación requerida"})
+		return
+	}
+
+	// 2. Convertir el ":id" de la ruta (texto) a número.
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "identificador inválido"})
+		return
+	}
+
+	// 3. Buscar el vehículo.
+	vehiculo, err := repository.DB.BuscarVehiculoPorID(id)
+	if errors.Is(err, repository.ErrNoEncontrado) {
+		responderVehiculoNoEncontrado(c)
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error interno del servidor"})
+		return
+	}
+
+	// 4. Autorización por propiedad: solo el dueño puede reportar la venta.
+	//    Va ANTES de revisar el estado para no revelar información de
+	//    vehículos ajenos.
+	if vehiculo.VendedorID != vendedor.ID {
+		c.JSON(http.StatusForbidden,
+			gin.H{"error": "solo el vendedor dueño del vehículo puede reportar su venta"})
+		return
+	}
+
+	// 5. Regla de negocio: solo se vende lo que está en el catálogo.
+	if vehiculo.Estado != models.EstadoPublicada {
+		c.JSON(http.StatusConflict,
+			gin.H{"error": "solo se puede reportar la venta de un vehículo publicado"})
+		return
+	}
+
+	// 6. Marcar como vendido. Desde ese momento deja de aparecer en el
+	//    catálogo, porque el catálogo solo muestra vehículos publicados.
+	vendido, err := repository.DB.ActualizarEstadoVehiculo(id, models.EstadoVendido)
+	if errors.Is(err, repository.ErrNoEncontrado) {
+		// Pudo ser eliminado por un administrador entre el paso 3 y este.
+		responderVehiculoNoEncontrado(c)
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error interno del servidor"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"mensaje":  "venta reportada; el vehículo salió del catálogo",
+		"vehiculo": vendido,
+	})
 }
