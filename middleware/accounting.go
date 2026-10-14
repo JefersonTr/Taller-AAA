@@ -25,19 +25,27 @@ func Accounting() gin.HandlerFunc {
 		//    El código de abajo se ejecuta cuando la respuesta ya está decidida.
 		c.Next()
 
-		// 3. Armar y guardar el registro de la operación.
+		// 3. Identificar quién hizo la operación. Si la ruta es pública o la
+		//    autenticación falló, no hay usuario en el contexto: es "anonimo".
+		usuario := "anonimo"
+		if autenticado, ok := UsuarioActual(c); ok {
+			usuario = autenticado.NombreUsuario
+		}
+
+		// 4. Armar y guardar el registro de la operación.
 		registro := models.RegistroAuditoria{
 			FechaHora:    inicio.Format(time.RFC3339),
 			Metodo:       c.Request.Method,
 			Ruta:         c.Request.URL.Path,
 			IPCliente:    c.ClientIP(),
+			Usuario:      usuario,
 			CodigoEstado: c.Writer.Status(),
 		}
 		repository.DB.GuardarRegistro(registro)
 
-		// 4. Mostrarlo también en consola.
-		log.Printf("[ACCOUNTING] %s | %s %s | IP: %s | Estado: %d",
+		// 5. Mostrarlo también en consola.
+		log.Printf("[ACCOUNTING] %s | %s %s | IP: %s | Usuario: %s | Estado: %d",
 			registro.FechaHora, registro.Metodo, registro.Ruta,
-			registro.IPCliente, registro.CodigoEstado)
+			registro.IPCliente, registro.Usuario, registro.CodigoEstado)
 	}
 }

@@ -52,5 +52,7 @@ type RegistroAuditoria struct {
 	Metodo       string `json:"metodo"`        // GET, POST, PUT...
 	Ruta         string `json:"ruta"`          // Endpoint solicitado
 	IPCliente    string `json:"ip_cliente"`    // Dirección IP de quien hizo la petición
+	Usuario      string `json:"usuario"`       // Quién la hizo: nombre de usuario o "anonimo"
 	CodigoEstado int    `json:"codigo_estado"` // Resultado: 200, 401, 403, 404...
+
 }
