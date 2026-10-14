@@ -19,8 +19,9 @@ import (
 // como administrador). Solo se leen los campos que aparecen aquí.
 // binding:"required" hace que Gin rechace la petición si falta el campo.
 type solicitudRegistro struct {
-	Nombre        string `json:"nombre" binding:"required"`
-	NombreUsuario string `json:"nombre_usuario" binding:"required"`
+	Nombre string `json:"nombre" binding:"required"`
+	// excludes=: impide los dos puntos, porque Basic Auth los usa como separador
+	NombreUsuario string `json:"nombre_usuario" binding:"required,excludes=:"`
 	Telefono      string `json:"telefono" binding:"required"`
 	Contrasena    string `json:"contrasena" binding:"required"`
 }
