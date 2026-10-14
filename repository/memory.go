@@ -134,6 +134,30 @@ func (db *BaseDatosMemoria) BuscarVehiculoPorID(id int) (models.Vehiculo, error)
 	return vehiculo, nil
 }
 
+// ActualizarEstadoVehiculo cambia el estado de un vehículo existente y
+// devuelve el vehículo actualizado, o ErrNoEncontrado si no existe.
+//
+// La usan el vendedor (reportar venta: publicada → vendido) y el
+// administrador (autorizar publicación: pendiente → publicada).
+// Las reglas sobre qué cambios están permitidos se validan en los
+// handlers; el repositorio solo guarda.
+func (db *BaseDatosMemoria) ActualizarEstadoVehiculo(id int, estado models.EstadoVehiculo) (models.Vehiculo, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	// Paso 1: obtener una COPIA del vehículo guardado en el mapa.
+	vehiculo, existe := db.vehiculos[id]
+	if !existe {
+		return models.Vehiculo{}, ErrNoEncontrado
+	}
+
+	// Paso 2: cambiar el estado en la copia y volver a guardarla.
+	// Sin esta segunda línea, el cambio se perdería.
+	vehiculo.Estado = estado
+	db.vehiculos[id] = vehiculo
+	return vehiculo, nil
+}
+
 // ListarVehiculosPorEstado devuelve los vehículos en el estado indicado,
 // ordenados por ID para que el resultado sea siempre el mismo.
 func (db *BaseDatosMemoria) ListarVehiculosPorEstado(estado models.EstadoVehiculo) []models.Vehiculo {
