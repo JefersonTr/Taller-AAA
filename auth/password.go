@@ -1,8 +1,10 @@
-/* Paquete auth: contiene las herramientas de seguridad para manejar contraseñas.
+/*
+	Paquete auth: contiene las herramientas de seguridad para manejar contraseñas.
 
 Regla principal: NUNCA guardamos la contraseña tal como la escribe el usuario.
 En su lugar guardamos un "hash", que es como una huella digital de la
-contraseña: sirve para comprobarla, pero no se puede revertir para descubrir la contraseña original. */
+contraseña: sirve para comprobarla, pero no se puede revertir para descubrir la contraseña original.
+*/
 package auth
 
 import (
@@ -48,7 +50,6 @@ func GenerarHash(contrasena string) (string, error) {
 	// dos personas con la misma contraseña tendrán hashes diferentes.
 	sal := make([]byte, largoSal) // Reserva espacio para 16 bytes
 	rand.Read(sal)                // Llena ese espacio con bytes aleatorios
-	// Nota: desde Go 1.24, rand.Read nunca devuelve error, por eso no lo revisamos.
 
 	// Paso 2: calcular el hash.
 	// PBKDF2 mezcla la contraseña con la sal y repite el proceso

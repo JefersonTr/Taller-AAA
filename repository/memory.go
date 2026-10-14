@@ -1,57 +1,157 @@
+// Paquete repository: guarda y consulta los datos de AutoMarket.
+// Esta versión guarda todo en memoria, por lo que los datos
+// se pierden cuando se detiene el servidor.
 package repository
 
 import (
-	"automarket/models"
+	"cmp"
+	"errors"
+	"slices"
 	"sync"
+
+	"automarket/models"
 )
 
-// Db simulada en memoria
-type InMemoryDB struct {
-	mu   sync.RWMutex
-	logs []models.LogEntry
+// Errores que pueden devolver las funciones de este paquete.
+// Los handlers los comparan con errors.Is para decidir qué código HTTP responder.
+var (
+	ErrNombreUsuarioEnUso = errors.New("el nombre de usuario ya está registrado")
+	ErrNoEncontrado       = errors.New("el recurso solicitado no existe")
+)
 
-	// Variables para parte 3
-	vehiculos   map[int]models.Vehiculo
-	vendedores  map[int]models.Vendedor
-	nextVehicID int
-	nextVendID  int
+// BaseDatosMemoria simula una base de datos guardando la información en memoria.
+type BaseDatosMemoria struct {
+	// mu es un candado que protege los datos cuando llegan varias peticiones
+	// al mismo tiempo. Gin atiende cada petición en paralelo, y si dos
+	// escriben un mapa a la vez, el programa se cierra con error.
+	//   - Lock/Unlock: para escribir (solo uno a la vez).
+	//   - RLock/RUnlock: para leer (varios a la vez).
+	mu sync.RWMutex
+
+	registros []models.RegistroAuditoria
+	usuarios  map[int]models.Usuario
+	vehiculos map[int]models.Vehiculo
+
+	// Contadores para asignar el siguiente ID disponible.
+	siguienteIDUsuario  int
+	siguienteIDVehiculo int
 }
 
-var DB *InMemoryDB
+// DB es la única instancia de la base de datos que usa todo el proyecto.
+var DB *BaseDatosMemoria
 
-func InitDB() {
-	DB = &InMemoryDB{
-		logs: make([]models.LogEntry, 0),
-
-		// Inicializacion de la parte 3
-		vehiculos:   make(map[int]models.Vehiculo),
-		vendedores:  make(map[int]models.Vendedor),
-		nextVehicID: 1,
-		nextVendID:  1,
+// InicializarBD crea la base de datos vacía. Se llama una sola vez al arrancar.
+func InicializarBD() {
+	DB = &BaseDatosMemoria{
+		registros:           make([]models.RegistroAuditoria, 0),
+		usuarios:            make(map[int]models.Usuario),
+		vehiculos:           make(map[int]models.Vehiculo),
+		siguienteIDUsuario:  1,
+		siguienteIDVehiculo: 1,
 	}
 }
 
-func (db *InMemoryDB) SaveLog(entry models.LogEntry) {
+// ---------------- Auditoría ----------------
+
+// GuardarRegistro agrega una operación al registro de auditoría.
+func (db *BaseDatosMemoria) GuardarRegistro(registro models.RegistroAuditoria) {
 	db.mu.Lock()
-	defer db.mu.Unlock()
-	db.logs = append(db.logs, entry)
+	defer db.mu.Unlock() // defer: se ejecuta al salir de la función, pase lo que pase
+	db.registros = append(db.registros, registro)
 }
 
-// Funciones para la parte 3
-func (db *InMemoryDB) GuardarVendedor(v models.Vendedor) models.Vendedor {
+// ---------------- Usuarios ----------------
+
+// GuardarUsuario asigna un ID al usuario y lo guarda.
+// Devuelve ErrNombreUsuarioEnUso si el nombre de usuario ya existe.
+func (db *BaseDatosMemoria) GuardarUsuario(usuario models.Usuario) (models.Usuario, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
-	v.ID = db.nextVendID
-	db.vendedores[v.ID] = v
-	db.nextVendID++
-	return v
+
+	// Verificar y guardar dentro del mismo candado evita que dos registros
+	// simultáneos con el mismo nombre de usuario pasen ambos la verificación.
+	for _, existente := range db.usuarios {
+		if existente.NombreUsuario == usuario.NombreUsuario {
+			return models.Usuario{}, ErrNombreUsuarioEnUso
+		}
+	}
+
+	usuario.ID = db.siguienteIDUsuario
+	db.usuarios[usuario.ID] = usuario
+	db.siguienteIDUsuario++
+	return usuario, nil
 }
 
-func (db *InMemoryDB) GuardarVehiculo(v models.Vehiculo) models.Vehiculo {
+// BuscarUsuarioPorNombreUsuario devuelve el usuario con ese nombre de usuario,
+// o ErrNoEncontrado si no existe. La usa la autenticación.
+func (db *BaseDatosMemoria) BuscarUsuarioPorNombreUsuario(nombreUsuario string) (models.Usuario, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	for _, usuario := range db.usuarios {
+		if usuario.NombreUsuario == nombreUsuario {
+			return usuario, nil
+		}
+	}
+	return models.Usuario{}, ErrNoEncontrado
+}
+
+// BuscarUsuarioPorID devuelve el usuario con ese ID, o ErrNoEncontrado.
+// La usa el catálogo para obtener el contacto del vendedor.
+func (db *BaseDatosMemoria) BuscarUsuarioPorID(id int) (models.Usuario, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	usuario, existe := db.usuarios[id]
+	if !existe {
+		return models.Usuario{}, ErrNoEncontrado
+	}
+	return usuario, nil
+}
+
+// ---------------- Vehículos ----------------
+
+// GuardarVehiculo asigna un ID al vehículo y lo guarda.
+func (db *BaseDatosMemoria) GuardarVehiculo(vehiculo models.Vehiculo) models.Vehiculo {
 	db.mu.Lock()
 	defer db.mu.Unlock()
-	v.ID = db.nextVehicID
-	db.vehiculos[v.ID] = v
-	db.nextVehicID++
-	return v
+
+	vehiculo.ID = db.siguienteIDVehiculo
+	db.vehiculos[vehiculo.ID] = vehiculo
+	db.siguienteIDVehiculo++
+	return vehiculo
+}
+
+// BuscarVehiculoPorID devuelve el vehículo con ese ID, o ErrNoEncontrado.
+func (db *BaseDatosMemoria) BuscarVehiculoPorID(id int) (models.Vehiculo, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	vehiculo, existe := db.vehiculos[id]
+	if !existe {
+		return models.Vehiculo{}, ErrNoEncontrado
+	}
+	return vehiculo, nil
+}
+
+// ListarVehiculosPorEstado devuelve los vehículos en el estado indicado,
+// ordenados por ID para que el resultado sea siempre el mismo.
+func (db *BaseDatosMemoria) ListarVehiculosPorEstado(estado models.EstadoVehiculo) []models.Vehiculo {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	// make(..., 0) crea una lista vacía (no nula): en JSON se verá como []
+	// en lugar de null cuando no haya vehículos.
+	lista := make([]models.Vehiculo, 0)
+	for _, vehiculo := range db.vehiculos {
+		if vehiculo.Estado == estado {
+			lista = append(lista, vehiculo)
+		}
+	}
+
+	// Los mapas en Go no tienen orden fijo; ordenamos por ID de menor a mayor.
+	slices.SortFunc(lista, func(a, b models.Vehiculo) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+	return lista
 }

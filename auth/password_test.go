@@ -1,7 +1,9 @@
-/* Pruebas automáticas del paquete auth.
+/*
+	Pruebas automáticas del paquete auth.
 
 Go reconoce como pruebas los archivos que terminan en "_test.go"
-y las funciones que empiezan con "Test". Se ejecutan con: go test ./auth/ -v */
+y las funciones que empiezan con "Test". Se ejecutan con: go test ./auth/ -v
+*/
 package auth
 
 import "testing" // Paquete estándar de Go para escribir pruebas
