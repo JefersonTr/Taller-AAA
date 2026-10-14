@@ -45,6 +45,10 @@ func main() {
 	//    por eso NO le aplican la autenticación ni la autorización del grupo.
 	r.POST("/api/vendedor/registro", handlers.RegistrarVendedor)
 
+	// Catálogo del visitante (HU-VIS-01): no exige autenticación.
+	r.GET("/api/vehiculos", handlers.ListarCatalogo)
+	r.GET("/api/vehiculos/:id", handlers.ConsultarVehiculo)
+
 	// 7. Rutas del vendedor: exigen estar autenticado y tener rol vendedor.
 	rutasVendedor := r.Group("/api/vendedor")
 	rutasVendedor.Use(
