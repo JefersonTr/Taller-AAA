@@ -4,6 +4,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"automarket/auth"
 	"automarket/handlers"
@@ -14,9 +15,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// rutaAuditoria es el archivo del registro de auditoría persistente.
+// La carpeta "datos" está en .gitignore: nunca se sube al repositorio.
+var rutaAuditoria = filepath.Join("datos", "auditoria.jsonl")
+
 func main() {
 	// 1. Crear la base de datos en memoria y el administrador inicial.
 	repository.InicializarBD()
+	// Cargar el registro de auditoría y verificar su integridad.
+	// Si fue alterado, el servidor NO arranca ("fallar cerrado").
+	if err := repository.DB.AbrirArchivoAuditoria(rutaAuditoria); err != nil {
+		log.Fatalf("no se pudo cargar el registro de auditoría: %v", err)
+	}
 	crearAdministradorInicial()
 
 	// 2. Crear el servicio de autenticación con el repositorio real.

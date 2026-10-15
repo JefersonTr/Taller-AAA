@@ -41,7 +41,12 @@ func Accounting() gin.HandlerFunc {
 			Usuario:      usuario,
 			CodigoEstado: c.Writer.Status(),
 		}
-		repository.DB.GuardarRegistro(registro)
+
+		if err := repository.DB.GuardarRegistro(registro); err != nil {
+			// La respuesta ya se envió al cliente; solo podemos dejar constancia.
+			log.Printf("[ACCOUNTING] ERROR: no se pudo guardar el registro: %v", err)
+			return
+		}
 
 		// 5. Mostrarlo también en consola.
 		log.Printf("[ACCOUNTING] %s | %s %s | IP: %s | Usuario: %s | Estado: %d",

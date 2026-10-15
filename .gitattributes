@@ -1,0 +1,3 @@
+   # Todos los archivos .go usan finales de línea LF, sin importar el sistema
+   # operativo. Evita que gofmt marque archivos como modificados en Windows.
+   *.go text eol=lf
