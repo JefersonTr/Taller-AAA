@@ -54,5 +54,7 @@ type RegistroAuditoria struct {
 	IPCliente    string `json:"ip_cliente"`    // Dirección IP de quien hizo la petición
 	Usuario      string `json:"usuario"`       // Quién la hizo: nombre de usuario o "anonimo"
 	CodigoEstado int    `json:"codigo_estado"` // Resultado: 200, 401, 403, 404...
+	HashAnterior string `json:"hash_anterior"` // Hash del registro anterior ("" en el primero)
+	Hash         string `json:"hash"`          // SHA-256 de este registro, incluido HashAnterior
 
 }

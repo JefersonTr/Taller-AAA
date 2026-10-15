@@ -53,10 +53,20 @@ func InicializarBD() {
 
 // ---------------- Auditoría ----------------
 
-// GuardarRegistro agrega una operación al registro de auditoría.
+// GuardarRegistro agrega una operación al registro de auditoría,
+// encadenándola con el registro anterior mediante su hash.
 func (db *BaseDatosMemoria) GuardarRegistro(registro models.RegistroAuditoria) {
 	db.mu.Lock()
-	defer db.mu.Unlock() // defer: se ejecuta al salir de la función, pase lo que pase
+	defer db.mu.Unlock()
+
+	// El encadenamiento ocurre DENTRO del candado. Si dos peticiones
+	// llegaran a la vez fuera del candado, ambas podrían tomar el mismo
+	// "registro anterior" y la cadena se bifurcaría.
+	if len(db.registros) > 0 {
+		registro.HashAnterior = db.registros[len(db.registros)-1].Hash
+	}
+	registro.Hash = calcularHashRegistro(registro)
+
 	db.registros = append(db.registros, registro)
 }
 
