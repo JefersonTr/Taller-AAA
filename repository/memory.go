@@ -6,6 +6,7 @@ package repository
 import (
 	"cmp"
 	"errors"
+	"os"
 	"slices"
 	"sync"
 
@@ -29,8 +30,11 @@ type BaseDatosMemoria struct {
 	mu sync.RWMutex
 
 	registros []models.RegistroAuditoria
-	usuarios  map[int]models.Usuario
-	vehiculos map[int]models.Vehiculo
+	// archivoAuditoria es el archivo donde se agrega cada registro.
+	// Si es nil (por ejemplo, en las pruebas), la auditoría queda solo en memoria.
+	archivoAuditoria *os.File
+	usuarios         map[int]models.Usuario
+	vehiculos        map[int]models.Vehiculo
 
 	// Contadores para asignar el siguiente ID disponible.
 	siguienteIDUsuario  int
@@ -49,25 +53,6 @@ func InicializarBD() {
 		siguienteIDUsuario:  1,
 		siguienteIDVehiculo: 1,
 	}
-}
-
-// ---------------- Auditoría ----------------
-
-// GuardarRegistro agrega una operación al registro de auditoría,
-// encadenándola con el registro anterior mediante su hash.
-func (db *BaseDatosMemoria) GuardarRegistro(registro models.RegistroAuditoria) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	// El encadenamiento ocurre DENTRO del candado. Si dos peticiones
-	// llegaran a la vez fuera del candado, ambas podrían tomar el mismo
-	// "registro anterior" y la cadena se bifurcaría.
-	if len(db.registros) > 0 {
-		registro.HashAnterior = db.registros[len(db.registros)-1].Hash
-	}
-	registro.Hash = calcularHashRegistro(registro)
-
-	db.registros = append(db.registros, registro)
 }
 
 // ---------------- Usuarios ----------------
