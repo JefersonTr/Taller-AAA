@@ -1,0 +1,6 @@
+   # Ejecutable que genera "go build" en Windows
+   *.exe
+
+   # Archivos de datos que generará la persistencia (paso 3 en adelante).
+   # No se suben: cada quien tiene los suyos y pueden contener datos de prueba.
+   /datos/
