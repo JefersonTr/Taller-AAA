@@ -50,6 +50,10 @@ func main() {
 	//      Recovery responde 500 y Accounting alcanza a registrarlo.
 	r.Use(middleware.Accounting(), gin.Recovery())
 
+	// Frontend: plantillas HTML y archivos estáticos (hoja de estilos).
+	handlers.ConfigurarPlantillas(r, "plantillas/*.html")
+	r.Static("/estaticos", "./estaticos")
+
 	// 6. Rutas públicas.
 	//    El registro se declara directamente en "r" y no en el grupo de abajo,
 	//    por eso NO le aplican la autenticación ni la autorización del grupo.
@@ -58,6 +62,10 @@ func main() {
 	// Catálogo del visitante (HU-VIS-01): no exige autenticación.
 	r.GET("/api/vehiculos", handlers.ListarCatalogo)
 	r.GET("/api/vehiculos/:id", handlers.ConsultarVehiculo)
+
+	// Páginas públicas del visitante (HU-VIS-01).
+	r.GET("/", handlers.PaginaCatalogo)
+	r.GET("/vehiculos/:id", handlers.PaginaVehiculo)
 
 	// 7. Rutas del vendedor: exigen estar autenticado y tener rol vendedor.
 	rutasVendedor := r.Group("/api/vendedor")
