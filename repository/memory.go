@@ -104,6 +104,29 @@ func (db *BaseDatosMemoria) BuscarUsuarioPorID(id int) (models.Usuario, error) {
 	return usuario, nil
 }
 
+// EliminarUsuario elimina al usuario y TODOS sus vehículos.
+// Devuelve ErrNoEncontrado si el usuario no existe.
+//
+// Los vehículos se eliminan en la misma operación (dentro del mismo candado)
+// para que nunca queden publicaciones de un vendedor que ya no existe.
+func (db *BaseDatosMemoria) EliminarUsuario(id int) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	if _, existe := db.usuarios[id]; !existe {
+		return ErrNoEncontrado
+	}
+
+	// En Go es seguro borrar elementos de un mapa mientras se recorre.
+	for idVehiculo, vehiculo := range db.vehiculos {
+		if vehiculo.VendedorID == id {
+			delete(db.vehiculos, idVehiculo)
+		}
+	}
+	delete(db.usuarios, id)
+	return nil
+}
+
 // ---------------- Vehículos ----------------
 
 // GuardarVehiculo asigna un ID al vehículo y lo guarda.
@@ -151,6 +174,19 @@ func (db *BaseDatosMemoria) ActualizarEstadoVehiculo(id int, estado models.Estad
 	vehiculo.Estado = estado
 	db.vehiculos[id] = vehiculo
 	return vehiculo, nil
+}
+
+// EliminarVehiculo elimina un vehículo.
+// Devuelve ErrNoEncontrado si el vehículo no existe.
+func (db *BaseDatosMemoria) EliminarVehiculo(id int) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	if _, existe := db.vehiculos[id]; !existe {
+		return ErrNoEncontrado
+	}
+	delete(db.vehiculos, id)
+	return nil
 }
 
 // ListarVehiculosPorEstado devuelve los vehículos en el estado indicado,

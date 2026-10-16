@@ -32,4 +32,65 @@ func TestActualizarEstadoVehiculo(t *testing.T) {
 	if !errors.Is(err, ErrNoEncontrado) {
 		t.Fatal("debería devolver ErrNoEncontrado para un vehículo inexistente")
 	}
+
+}
+
+func TestEliminarVehiculo(t *testing.T) {
+	InicializarBD()
+	vehiculo := DB.GuardarVehiculo(models.Vehiculo{
+		Marca: "Renault", Modelo: "Koleos 2018", Precio: 78000000,
+		Estado: models.EstadoPublicada, VendedorID: 1,
+	})
+
+	// Caso 1: eliminar un vehículo existente.
+	if err := DB.EliminarVehiculo(vehiculo.ID); err != nil {
+		t.Fatal("debería eliminar el vehículo:", err)
+	}
+	if _, err := DB.BuscarVehiculoPorID(vehiculo.ID); !errors.Is(err, ErrNoEncontrado) {
+		t.Fatal("el vehículo eliminado no debería encontrarse")
+	}
+
+	// Caso 2: eliminar un vehículo inexistente.
+	if err := DB.EliminarVehiculo(99); !errors.Is(err, ErrNoEncontrado) {
+		t.Fatal("debería devolver ErrNoEncontrado para un vehículo inexistente")
+	}
+}
+
+func TestEliminarUsuario(t *testing.T) {
+	InicializarBD()
+
+	// Preparación: Ana con dos vehículos y Luis con uno.
+	ana, _ := DB.GuardarUsuario(models.Usuario{NombreUsuario: "ana", Rol: models.RolVendedor})
+	luis, _ := DB.GuardarUsuario(models.Usuario{NombreUsuario: "luis", Rol: models.RolVendedor})
+	deAna1 := DB.GuardarVehiculo(models.Vehiculo{Marca: "Renault", VendedorID: ana.ID})
+	deAna2 := DB.GuardarVehiculo(models.Vehiculo{Marca: "Mazda", VendedorID: ana.ID})
+	deLuis := DB.GuardarVehiculo(models.Vehiculo{Marca: "Kia", VendedorID: luis.ID})
+
+	// Caso 1: eliminar a Ana.
+	if err := DB.EliminarUsuario(ana.ID); err != nil {
+		t.Fatal("debería eliminar al usuario:", err)
+	}
+	if _, err := DB.BuscarUsuarioPorID(ana.ID); !errors.Is(err, ErrNoEncontrado) {
+		t.Fatal("el usuario eliminado no debería encontrarse")
+	}
+
+	// Caso 2: los vehículos de Ana se eliminaron con ella.
+	for _, id := range []int{deAna1.ID, deAna2.ID} {
+		if _, err := DB.BuscarVehiculoPorID(id); !errors.Is(err, ErrNoEncontrado) {
+			t.Fatalf("el vehículo %d de Ana debería haberse eliminado", id)
+		}
+	}
+
+	// Caso 3: los datos de Luis no se tocaron.
+	if _, err := DB.BuscarUsuarioPorID(luis.ID); err != nil {
+		t.Fatal("Luis no debería haberse eliminado")
+	}
+	if _, err := DB.BuscarVehiculoPorID(deLuis.ID); err != nil {
+		t.Fatal("el vehículo de Luis no debería haberse eliminado")
+	}
+
+	// Caso 4: eliminar un usuario inexistente.
+	if err := DB.EliminarUsuario(99); !errors.Is(err, ErrNoEncontrado) {
+		t.Fatal("debería devolver ErrNoEncontrado para un usuario inexistente")
+	}
 }

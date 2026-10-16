@@ -70,6 +70,20 @@ func main() {
 		rutasVendedor.PUT("/vehiculos/:id/venta", handlers.ReportarVenta)
 	}
 
+	// Rutas del administrador (HU-ADM-01): exigen estar autenticado
+	// y tener rol administrador.
+	rutasAdmin := r.Group("/api/admin")
+	rutasAdmin.Use(
+		middleware.RequiereAutenticacion(servicioAutenticacion), // ¿Quién eres? (401)
+		middleware.RequiereRol(models.RolAdministrador),         // ¿Puedes hacer esto? (403)
+	)
+	{
+		rutasAdmin.GET("/vehiculos/pendientes", handlers.ListarPendientes)
+		rutasAdmin.PUT("/vehiculos/:id/autorizacion", handlers.AutorizarPublicacion)
+		rutasAdmin.DELETE("/vehiculos/:id", handlers.EliminarPublicacion)
+		rutasAdmin.DELETE("/usuarios/:id", handlers.EliminarUsuario)
+	}
+
 	// 8. Iniciar el servidor. Si falla (por ejemplo, el puerto está ocupado),
 	//    el programa termina mostrando el motivo.
 	log.Println("AutoMarket escuchando en http://localhost:8080")
