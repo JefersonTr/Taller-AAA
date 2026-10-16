@@ -1,43 +1,17 @@
 // Paquete handlers: contiene las funciones que atienden cada endpoint de la API.
+// Cada handler lee la petición, llama a un servicio y traduce el resultado a HTTP.
 package handlers
 
 import (
-	"errors"
 	"net/http"
-	"strconv"
 
-	"automarket/auth"
-	"automarket/middleware"
-	"automarket/models"
-	"automarket/repository"
+	"automarket/servicios"
 
 	"github.com/gin-gonic/gin"
 )
 
-// solicitudRegistro contiene los datos que el cliente envía para registrarse.
-//
-// Usamos una estructura distinta al modelo Usuario para que el cliente
-// NO pueda enviar campos como "id" o "rol" (por ejemplo, registrarse
-// como administrador). Solo se leen los campos que aparecen aquí.
-// binding:"required" hace que Gin rechace la petición si falta el campo.
-type solicitudRegistro struct {
-	Nombre string `json:"nombre" binding:"required"`
-	// excludes=: impide los dos puntos, porque Basic Auth los usa como separador
-	NombreUsuario string `json:"nombre_usuario" binding:"required,excludes=:"`
-	Telefono      string `json:"telefono" binding:"required"`
-	Contrasena    string `json:"contrasena" binding:"required"`
-}
-
-// solicitudPublicacion contiene los datos que el vendedor envía al publicar.
-// El estado y el vendedor NO vienen del cliente: los asigna el servidor.
-type solicitudPublicacion struct {
-	Marca  string `json:"marca" binding:"required"`
-	Modelo string `json:"modelo" binding:"required"`
-	Precio int    `json:"precio" binding:"required,gt=0"` // gt=0: mayor que cero
-}
-
-// respuestaVendedor contiene los datos del vendedor que se devuelven al cliente.
-// No incluye la contraseña ni su hash.
+// respuestaVendedor contiene los datos del vendedor que se devuelven al
+// cliente. No incluye la contraseña ni su hash.
 type respuestaVendedor struct {
 	ID            int    `json:"id"`
 	Nombre        string `json:"nombre"`
@@ -47,38 +21,19 @@ type respuestaVendedor struct {
 
 // RegistrarVendedor permite que una persona se registre como vendedor (HU-VEN-01).
 func RegistrarVendedor(c *gin.Context) {
-	// 1. Leer y validar el JSON recibido.
-	var solicitud solicitudRegistro
-	if err := c.ShouldBindJSON(&solicitud); err != nil {
+	// Los campos que no existen en DatosRegistro (como "rol") se ignoran.
+	var datos servicios.DatosRegistro
+	if err := c.ShouldBindJSON(&datos); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "datos inválidos"})
 		return
 	}
 
-	// 2. Convertir la contraseña en hash. La contraseña original no se guarda.
-	hash, err := auth.GenerarHash(solicitud.Contrasena)
+	vendedor, err := servicios.RegistrarVendedor(datos)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "no se pudo completar el registro"})
+		responderErrorServicio(c, err)
 		return
 	}
 
-	// 3. Guardar el usuario. El rol lo asigna el servidor, nunca el cliente.
-	vendedor, err := repository.DB.GuardarUsuario(models.Usuario{
-		Nombre:         solicitud.Nombre,
-		NombreUsuario:  solicitud.NombreUsuario,
-		Telefono:       solicitud.Telefono,
-		Rol:            models.RolVendedor,
-		HashContrasena: hash,
-	})
-	if errors.Is(err, repository.ErrNombreUsuarioEnUso) {
-		c.JSON(http.StatusConflict, gin.H{"error": "el nombre de usuario ya está registrado"})
-		return
-	}
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "no se pudo completar el registro"})
-		return
-	}
-
-	// 4. Responder sin datos sensibles.
 	c.JSON(http.StatusCreated, gin.H{
 		"mensaje": "vendedor registrado",
 		"vendedor": respuestaVendedor{
@@ -93,31 +48,22 @@ func RegistrarVendedor(c *gin.Context) {
 // PublicarVehiculo registra un vehículo en estado pendiente de aprobación,
 // asociado al vendedor autenticado (HU-VEN-01).
 func PublicarVehiculo(c *gin.Context) {
-	// 1. Obtener el vendedor autenticado.
-	//    La ruta ya está protegida, pero si por error se configurara sin
-	//    autenticación, negamos la operación en lugar de seguir ("fallar cerrado").
-	vendedor, autenticado := middleware.UsuarioActual(c)
-	if !autenticado {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "autenticación requerida"})
+	vendedor, ok := leerUsuarioActual(c)
+	if !ok {
 		return
 	}
 
-	// 2. Leer y validar el JSON recibido.
-	var solicitud solicitudPublicacion
-	if err := c.ShouldBindJSON(&solicitud); err != nil {
+	var datos servicios.DatosPublicacion
+	if err := c.ShouldBindJSON(&datos); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "datos inválidos"})
 		return
 	}
 
-	// 3. Guardar el vehículo. El estado siempre inicia en pendiente y el
-	//    vendedor es quien se autenticó, nunca un dato enviado por el cliente.
-	vehiculo := repository.DB.GuardarVehiculo(models.Vehiculo{
-		Marca:      solicitud.Marca,
-		Modelo:     solicitud.Modelo,
-		Precio:     solicitud.Precio,
-		Estado:     models.EstadoPendiente,
-		VendedorID: vendedor.ID,
-	})
+	vehiculo, err := servicios.PublicarVehiculo(vendedor.ID, datos)
+	if err != nil {
+		responderErrorServicio(c, err)
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"mensaje":  "vehículo registrado en estado pendiente de aprobación",
@@ -126,64 +72,26 @@ func PublicarVehiculo(c *gin.Context) {
 }
 
 // ReportarVenta marca como vendido un vehículo publicado del vendedor
-// autenticado, lo que lo retira del catálogo.
+// autenticado (HU-VEN-01).
 func ReportarVenta(c *gin.Context) {
-	// 1. Obtener el vendedor autenticado ("fallar cerrado" si no lo hay).
-	vendedor, autenticado := middleware.UsuarioActual(c)
-	if !autenticado {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "autenticación requerida"})
+	vendedor, ok := leerUsuarioActual(c)
+	if !ok {
 		return
 	}
 
-	// 2. Convertir el ":id" de la ruta (texto) a número.
-	id, err := strconv.Atoi(c.Param("id"))
+	id, ok := leerID(c)
+	if !ok {
+		return
+	}
+
+	vehiculo, err := servicios.ReportarVenta(vendedor.ID, id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "identificador inválido"})
-		return
-	}
-
-	// 3. Buscar el vehículo.
-	vehiculo, err := repository.DB.BuscarVehiculoPorID(id)
-	if errors.Is(err, repository.ErrNoEncontrado) {
-		responderVehiculoNoEncontrado(c)
-		return
-	}
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "error interno del servidor"})
-		return
-	}
-
-	// 4. Autorización por propiedad: solo el dueño puede reportar la venta.
-	//    Va ANTES de revisar el estado para no revelar información de
-	//    vehículos ajenos.
-	if vehiculo.VendedorID != vendedor.ID {
-		c.JSON(http.StatusForbidden,
-			gin.H{"error": "solo el vendedor dueño del vehículo puede reportar su venta"})
-		return
-	}
-
-	// 5. Regla de negocio: solo se vende lo que está en el catálogo.
-	if vehiculo.Estado != models.EstadoPublicada {
-		c.JSON(http.StatusConflict,
-			gin.H{"error": "solo se puede reportar la venta de un vehículo publicado"})
-		return
-	}
-
-	// 6. Marcar como vendido. Desde ese momento deja de aparecer en el
-	//    catálogo, porque el catálogo solo muestra vehículos publicados.
-	vendido, err := repository.DB.ActualizarEstadoVehiculo(id, models.EstadoVendido)
-	if errors.Is(err, repository.ErrNoEncontrado) {
-		// Pudo ser eliminado por un administrador entre el paso 3 y este.
-		responderVehiculoNoEncontrado(c)
-		return
-	}
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "error interno del servidor"})
+		responderErrorServicio(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"mensaje":  "venta reportada; el vehículo salió del catálogo",
-		"vehiculo": vendido,
+		"vehiculo": vehiculo,
 	})
 }

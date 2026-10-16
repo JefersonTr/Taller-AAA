@@ -18,6 +18,16 @@ var (
 	// handlers dependan solo de los servicios y no del repositorio.
 	ErrNoEncontrado = repository.ErrNoEncontrado
 
+	// ErrNombreUsuarioEnUso: ya existe un usuario con ese nombre de usuario.
+	ErrNombreUsuarioEnUso = repository.ErrNombreUsuarioEnUso
+
+	// ErrDatosInvalidos: faltan datos obligatorios o tienen un valor no permitido.
+	ErrDatosInvalidos = errors.New("datos inválidos")
+
+	// ErrSinPermiso: el usuario autenticado no es dueño del recurso
+	// (autorización por propiedad).
+	ErrSinPermiso = errors.New("solo el vendedor dueño del vehículo puede realizar esta operación")
+
 	// ErrEstadoNoValido: la operación no aplica al estado actual del
 	// vehículo (por ejemplo, autorizar una publicación que ya está publicada).
 	ErrEstadoNoValido = errors.New("la operación no es válida para el estado actual del vehículo")
