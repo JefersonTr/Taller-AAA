@@ -1,0 +1,80 @@
+/* Colores del sitio. Cambiarlos aquí cambia toda la página. */
+:root {
+  --fondo: #f5f6f8;
+  --superficie: #ffffff;
+  --texto: #1f2933;
+  --suave: #616e7c;
+  --acento: #1d4ed8;
+  --borde: #d9dee5;
+}
+
+/* Modo oscuro: se aplica si el sistema operativo lo tiene activado. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #111418;
+    --superficie: #1b2027;
+    --texto: #e4e7eb;
+    --suave: #9aa5b1;
+    --acento: #7aa2ff;
+    --borde: #2c333d;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+  line-height: 1.5;
+}
+
+a { color: var(--acento); }
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borde);
+}
+.marca { font-weight: 700; font-size: 1.25rem; color: var(--texto); text-decoration: none; }
+.barra nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+.barra nav a { text-decoration: none; }
+
+.contenido { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.tarjeta {
+  display: block;
+  padding: 1rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  color: var(--texto);
+  text-decoration: none;
+}
+.tarjeta:hover { border-color: var(--acento); }
+.tarjeta h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+
+.precio { margin: 0.25rem 0; font-size: 1.25rem; font-weight: 700; color: var(--acento); }
+.suave { color: var(--suave); }
+
+.panel {
+  padding: 1.5rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+}
+.contacto { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--borde); }
+.error h1 { margin: 0; font-size: 3rem; color: var(--suave); }
+
+.pie { padding: 2rem 1rem; text-align: center; font-size: 0.875rem; color: var(--suave); }
