@@ -9,6 +9,7 @@ import (
 
 	"automarket/models"
 	"automarket/repository"
+	"automarket/servicios"
 
 	"github.com/gin-gonic/gin"
 )
@@ -62,7 +63,7 @@ func TestListarCatalogo(t *testing.T) {
 	}
 
 	// Convertir el JSON de la respuesta a la estructura de Go.
-	var catalogo []vehiculoPublico
+	var catalogo []servicios.VehiculoPublico
 	if err := json.Unmarshal(respuesta.Body.Bytes(), &catalogo); err != nil {
 		t.Fatal("la respuesta no es un JSON válido:", err)
 	}
