@@ -91,3 +91,9 @@ func leerUsuarioDePagina(c *gin.Context) (models.Usuario, bool) {
 	}
 	return usuario, autenticado
 }
+
+// RutaNoEncontrada responde a las direcciones que no existen: la página de
+// error para un navegador y JSON para un cliente de la API.
+func RutaNoEncontrada(c *gin.Context) {
+	middleware.ResponderError(c, http.StatusNotFound, "la página que buscas no existe")
+}
