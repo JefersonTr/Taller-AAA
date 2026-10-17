@@ -46,10 +46,12 @@ func main() {
 	}
 
 	// Middlewares globales. El orden importa:
-	//   - Accounting primero, para registrar TODAS las operaciones.
-	//   - Recovery después: si un handler falla de forma inesperada,
-	//     Recovery responde 500 y Accounting alcanza a registrarlo.
-	r.Use(middleware.Accounting(), gin.Recovery())
+	//   - Accounting primero, para registrar TODAS las operaciones,
+	//     incluidas las que rechacen los demás.
+	//   - Recovery: si un handler falla de forma inesperada, responde 500
+	//     y Accounting alcanza a registrarlo.
+	//   - ProteccionCSRF: rechaza formularios enviados desde otros sitios.
+	r.Use(middleware.Accounting(), gin.Recovery(), middleware.ProteccionCSRF())
 
 	// 6. Frontend: plantillas HTML y archivos estáticos (hoja de estilos).
 	handlers.ConfigurarPlantillas(r, "plantillas/*.html")
@@ -66,7 +68,20 @@ func main() {
 	r.GET("/registro", handlers.PaginaRegistro)
 	r.POST("/registro", handlers.EnviarRegistro)
 
-	// 9. API del vendedor: exige estar autenticado y tener rol vendedor.
+	// 9. Páginas del vendedor (HU-VEN-01): mismos middlewares que su API.
+	//    Al entrar sin credenciales, el navegador muestra su ventana de login.
+	paginasVendedor := r.Group("/vendedor")
+	paginasVendedor.Use(
+		middleware.RequiereAutenticacion(servicioAutenticacion),
+		middleware.RequiereRol(models.RolVendedor),
+	)
+	{
+		paginasVendedor.GET("", handlers.PaginaVendedor)
+		paginasVendedor.POST("/vehiculos", handlers.EnviarPublicacion)
+		paginasVendedor.POST("/vehiculos/:id/venta", handlers.EnviarVenta)
+	}
+
+	// 10. API del vendedor: exige estar autenticado y tener rol vendedor.
 	rutasVendedor := r.Group("/api/vendedor")
 	rutasVendedor.Use(
 		middleware.RequiereAutenticacion(servicioAutenticacion), // ¿Quién eres? (401)
@@ -77,7 +92,7 @@ func main() {
 		rutasVendedor.PUT("/vehiculos/:id/venta", handlers.ReportarVenta)
 	}
 
-	// 10. API del administrador (HU-ADM-01): exige rol administrador.
+	// 11. API del administrador (HU-ADM-01): exige rol administrador.
 	rutasAdmin := r.Group("/api/admin")
 	rutasAdmin.Use(
 		middleware.RequiereAutenticacion(servicioAutenticacion), // ¿Quién eres? (401)
@@ -90,7 +105,7 @@ func main() {
 		rutasAdmin.DELETE("/usuarios/:id", handlers.EliminarUsuario)
 	}
 
-	// 11. Iniciar el servidor. Si falla (por ejemplo, el puerto está ocupado),
+	// 12. Iniciar el servidor. Si falla (por ejemplo, el puerto está ocupado),
 	//     el programa termina mostrando el motivo.
 	log.Println("AutoMarket escuchando en http://localhost:8080")
 	if err := r.Run(":8080"); err != nil {
