@@ -15,21 +15,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// rutaAuditoria es el archivo del registro de auditoría persistente.
-// La carpeta "datos" está en .gitignore: nunca se sube al repositorio.
-var rutaAuditoria = filepath.Join("datos", "auditoria.jsonl")
+// Archivos de datos persistentes. La carpeta "datos" está en .gitignore:
+// nunca se sube al repositorio.
+var (
+	rutaAuditoria = filepath.Join("datos", "auditoria.jsonl")
+	rutaDatos     = filepath.Join("datos", "datos.json")
+)
 
 func main() {
 	// 1. Crear la base de datos en memoria.
 	repository.InicializarBD()
 
-	// 2. Cargar el registro de auditoría y verificar su integridad.
-	//    Si fue alterado, el servidor NO arranca ("fallar cerrado").
+	// 2. Cargar los datos guardados: la auditoría (verificando su integridad)
+	//    y los usuarios y vehículos. Si algo falla, el servidor NO arranca.
 	if err := repository.DB.AbrirArchivoAuditoria(rutaAuditoria); err != nil {
 		log.Fatalf("no se pudo cargar el registro de auditoría: %v", err)
 	}
+	if err := repository.DB.AbrirArchivoDatos(rutaDatos); err != nil {
+		log.Fatalf("no se pudieron cargar los datos: %v", err)
+	}
 
-	// 3. Crear el administrador inicial desde las variables de entorno.
+	// 3. Crear el administrador inicial, si todavía no existe.
 	crearAdministradorInicial()
 
 	// 4. Crear el servicio de autenticación con el repositorio real.
@@ -131,14 +137,25 @@ func main() {
 
 // crearAdministradorInicial registra al administrador del sistema con las
 // credenciales de las variables de entorno AUTOMARKET_ADMIN_USUARIO y
-// AUTOMARKET_ADMIN_CONTRASENA.
-//
-// Si no están definidas, el servidor arranca sin administrador y lo avisa.
+// AUTOMARKET_ADMIN_CONTRASENA, si todavía no existe en los datos guardados.
 func crearAdministradorInicial() {
 	nombreUsuario := os.Getenv("AUTOMARKET_ADMIN_USUARIO")
 	contrasena := os.Getenv("AUTOMARKET_ADMIN_CONTRASENA")
 	if nombreUsuario == "" || contrasena == "" {
-		log.Println("aviso: no se creó el administrador; defina AUTOMARKET_ADMIN_USUARIO y AUTOMARKET_ADMIN_CONTRASENA")
+		log.Println("aviso: variables del administrador no definidas; se usan solo los usuarios guardados")
+		return
+	}
+
+	// Con la persistencia, el administrador ya puede existir desde una
+	// ejecución anterior. Si existe, se verifica que realmente sea
+	// administrador: si alguien hubiera registrado ese nombre como vendedor
+	// (por ejemplo, mientras el servidor corría sin estas variables), el
+	// servidor se detiene en lugar de arrancar sin administrador.
+	if existente, err := repository.DB.BuscarUsuarioPorNombreUsuario(nombreUsuario); err == nil {
+		if existente.Rol != models.RolAdministrador {
+			log.Fatalf("el usuario %q ya existe y no es administrador", nombreUsuario)
+		}
+		log.Printf("administrador %q cargado desde los datos guardados", nombreUsuario)
 		return
 	}
 
