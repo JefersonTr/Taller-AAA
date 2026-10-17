@@ -10,7 +10,7 @@ import (
 func TestActualizarEstadoVehiculo(t *testing.T) {
 	// Preparación: base de datos limpia con un vehículo publicado.
 	InicializarBD()
-	guardado := DB.GuardarVehiculo(models.Vehiculo{
+	guardado, _ := DB.GuardarVehiculo(models.Vehiculo{
 		Marca: "Renault", Modelo: "Koleos 2018", Precio: 78000000,
 		Estado: models.EstadoPublicada, VendedorID: 1,
 	})
@@ -37,7 +37,7 @@ func TestActualizarEstadoVehiculo(t *testing.T) {
 
 func TestEliminarVehiculo(t *testing.T) {
 	InicializarBD()
-	vehiculo := DB.GuardarVehiculo(models.Vehiculo{
+	vehiculo, _ := DB.GuardarVehiculo(models.Vehiculo{
 		Marca: "Renault", Modelo: "Koleos 2018", Precio: 78000000,
 		Estado: models.EstadoPublicada, VendedorID: 1,
 	})
@@ -62,9 +62,9 @@ func TestEliminarUsuario(t *testing.T) {
 	// Preparación: Ana con dos vehículos y Luis con uno.
 	ana, _ := DB.GuardarUsuario(models.Usuario{NombreUsuario: "ana", Rol: models.RolVendedor})
 	luis, _ := DB.GuardarUsuario(models.Usuario{NombreUsuario: "luis", Rol: models.RolVendedor})
-	deAna1 := DB.GuardarVehiculo(models.Vehiculo{Marca: "Renault", VendedorID: ana.ID})
-	deAna2 := DB.GuardarVehiculo(models.Vehiculo{Marca: "Mazda", VendedorID: ana.ID})
-	deLuis := DB.GuardarVehiculo(models.Vehiculo{Marca: "Kia", VendedorID: luis.ID})
+	deAna1, _ := DB.GuardarVehiculo(models.Vehiculo{Marca: "Renault", VendedorID: ana.ID})
+	deAna2, _ := DB.GuardarVehiculo(models.Vehiculo{Marca: "Mazda", VendedorID: ana.ID})
+	deLuis, _ := DB.GuardarVehiculo(models.Vehiculo{Marca: "Kia", VendedorID: luis.ID})
 
 	// Caso 1: eliminar a Ana.
 	if err := DB.EliminarUsuario(ana.ID); err != nil {

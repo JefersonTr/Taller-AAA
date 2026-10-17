@@ -34,11 +34,11 @@ func prepararDatos(t *testing.T) datosPrueba {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	d.pendiente = repository.DB.GuardarVehiculo(models.Vehiculo{
+	d.pendiente, _ = repository.DB.GuardarVehiculo(models.Vehiculo{
 		Marca: "Mazda", Modelo: "3 2020", Precio: 65000000,
 		Estado: models.EstadoPendiente, VendedorID: d.vendedor.ID,
 	})
-	d.publicado = repository.DB.GuardarVehiculo(models.Vehiculo{
+	d.publicado, _ = repository.DB.GuardarVehiculo(models.Vehiculo{
 		Marca: "Renault", Modelo: "Koleos 2018", Precio: 78000000,
 		Estado: models.EstadoPublicada, VendedorID: d.vendedor.ID,
 	})

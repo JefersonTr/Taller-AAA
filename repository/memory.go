@@ -1,6 +1,6 @@
 // Paquete repository: guarda y consulta los datos de AutoMarket.
-// Esta versión guarda todo en memoria, por lo que los datos
-// se pierden cuando se detiene el servidor.
+// Los datos viven en memoria y, si se abre un archivo con AbrirArchivoDatos,
+// también se guardan en disco después de cada cambio.
 package repository
 
 import (
@@ -14,13 +14,13 @@ import (
 )
 
 // Errores que pueden devolver las funciones de este paquete.
-// Los handlers los comparan con errors.Is para decidir qué código HTTP responder.
+// Los servicios y handlers los comparan con errors.Is.
 var (
 	ErrNombreUsuarioEnUso = errors.New("el nombre de usuario ya está registrado")
 	ErrNoEncontrado       = errors.New("el recurso solicitado no existe")
 )
 
-// BaseDatosMemoria simula una base de datos guardando la información en memoria.
+// BaseDatosMemoria guarda la información en memoria, con guardado opcional en disco.
 type BaseDatosMemoria struct {
 	// mu es un candado que protege los datos cuando llegan varias peticiones
 	// al mismo tiempo. Gin atiende cada petición en paralelo, y si dos
@@ -30,15 +30,21 @@ type BaseDatosMemoria struct {
 	mu sync.RWMutex
 
 	registros []models.RegistroAuditoria
+
 	// archivoAuditoria es el archivo donde se agrega cada registro.
 	// Si es nil (por ejemplo, en las pruebas), la auditoría queda solo en memoria.
 	archivoAuditoria *os.File
-	usuarios         map[int]models.Usuario
-	vehiculos        map[int]models.Vehiculo
+
+	usuarios  map[int]models.Usuario
+	vehiculos map[int]models.Vehiculo
 
 	// Contadores para asignar el siguiente ID disponible.
 	siguienteIDUsuario  int
 	siguienteIDVehiculo int
+
+	// rutaDatos es el archivo donde se guardan usuarios y vehículos.
+	// Si está vacía (por ejemplo, en las pruebas), los datos quedan solo en memoria.
+	rutaDatos string
 }
 
 // DB es la única instancia de la base de datos que usa todo el proyecto.
@@ -71,9 +77,14 @@ func (db *BaseDatosMemoria) GuardarUsuario(usuario models.Usuario) (models.Usuar
 		}
 	}
 
+	respaldo := db.tomarRespaldo()
 	usuario.ID = db.siguienteIDUsuario
 	db.usuarios[usuario.ID] = usuario
 	db.siguienteIDUsuario++
+
+	if err := db.confirmar(respaldo); err != nil {
+		return models.Usuario{}, err
+	}
 	return usuario, nil
 }
 
@@ -92,7 +103,6 @@ func (db *BaseDatosMemoria) BuscarUsuarioPorNombreUsuario(nombreUsuario string) 
 }
 
 // BuscarUsuarioPorID devuelve el usuario con ese ID, o ErrNoEncontrado.
-// La usa el catálogo para obtener el contacto del vendedor.
 func (db *BaseDatosMemoria) BuscarUsuarioPorID(id int) (models.Usuario, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
@@ -109,7 +119,6 @@ func (db *BaseDatosMemoria) ListarUsuarios() []models.Usuario {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	// La capacidad len(db.usuarios) reserva el espacio exacto de una vez.
 	lista := make([]models.Usuario, 0, len(db.usuarios))
 	for _, usuario := range db.usuarios {
 		lista = append(lista, usuario)
@@ -133,6 +142,7 @@ func (db *BaseDatosMemoria) EliminarUsuario(id int) error {
 		return ErrNoEncontrado
 	}
 
+	respaldo := db.tomarRespaldo()
 	// En Go es seguro borrar elementos de un mapa mientras se recorre.
 	for idVehiculo, vehiculo := range db.vehiculos {
 		if vehiculo.VendedorID == id {
@@ -140,20 +150,26 @@ func (db *BaseDatosMemoria) EliminarUsuario(id int) error {
 		}
 	}
 	delete(db.usuarios, id)
-	return nil
+
+	return db.confirmar(respaldo)
 }
 
 // ---------------- Vehículos ----------------
 
 // GuardarVehiculo asigna un ID al vehículo y lo guarda.
-func (db *BaseDatosMemoria) GuardarVehiculo(vehiculo models.Vehiculo) models.Vehiculo {
+func (db *BaseDatosMemoria) GuardarVehiculo(vehiculo models.Vehiculo) (models.Vehiculo, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
+	respaldo := db.tomarRespaldo()
 	vehiculo.ID = db.siguienteIDVehiculo
 	db.vehiculos[vehiculo.ID] = vehiculo
 	db.siguienteIDVehiculo++
-	return vehiculo
+
+	if err := db.confirmar(respaldo); err != nil {
+		return models.Vehiculo{}, err
+	}
+	return vehiculo, nil
 }
 
 // BuscarVehiculoPorID devuelve el vehículo con ese ID, o ErrNoEncontrado.
@@ -171,24 +187,25 @@ func (db *BaseDatosMemoria) BuscarVehiculoPorID(id int) (models.Vehiculo, error)
 // ActualizarEstadoVehiculo cambia el estado de un vehículo existente y
 // devuelve el vehículo actualizado, o ErrNoEncontrado si no existe.
 //
-// La usan el vendedor (reportar venta: publicada → vendido) y el
-// administrador (autorizar publicación: pendiente → publicada).
 // Las reglas sobre qué cambios están permitidos se validan en los
-// handlers; el repositorio solo guarda.
+// servicios; el repositorio solo guarda.
 func (db *BaseDatosMemoria) ActualizarEstadoVehiculo(id int, estado models.EstadoVehiculo) (models.Vehiculo, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	// Paso 1: obtener una COPIA del vehículo guardado en el mapa.
+	// En un mapa de structs se obtiene una COPIA: hay que volver a guardarla.
 	vehiculo, existe := db.vehiculos[id]
 	if !existe {
 		return models.Vehiculo{}, ErrNoEncontrado
 	}
 
-	// Paso 2: cambiar el estado en la copia y volver a guardarla.
-	// Sin esta segunda línea, el cambio se perdería.
+	respaldo := db.tomarRespaldo()
 	vehiculo.Estado = estado
 	db.vehiculos[id] = vehiculo
+
+	if err := db.confirmar(respaldo); err != nil {
+		return models.Vehiculo{}, err
+	}
 	return vehiculo, nil
 }
 
@@ -201,8 +218,10 @@ func (db *BaseDatosMemoria) EliminarVehiculo(id int) error {
 	if _, existe := db.vehiculos[id]; !existe {
 		return ErrNoEncontrado
 	}
+
+	respaldo := db.tomarRespaldo()
 	delete(db.vehiculos, id)
-	return nil
+	return db.confirmar(respaldo)
 }
 
 // ListarVehiculosPorEstado devuelve los vehículos en el estado indicado,

@@ -83,20 +83,19 @@ func RegistrarVendedor(datos DatosRegistro) (models.Usuario, error) {
 // PublicarVehiculo registra un vehículo en estado pendiente de aprobación,
 // asociado al vendedor indicado (HU-VEN-01).
 //
-// Errores: ErrDatosInvalidos.
+// Errores: ErrDatosInvalidos, o un error de guardado en disco.
 func PublicarVehiculo(vendedorID int, datos DatosPublicacion) (models.Vehiculo, error) {
 	if err := datos.validar(); err != nil {
 		return models.Vehiculo{}, err
 	}
 
-	vehiculo := repository.DB.GuardarVehiculo(models.Vehiculo{
+	return repository.DB.GuardarVehiculo(models.Vehiculo{
 		Marca:      datos.Marca,
 		Modelo:     datos.Modelo,
 		Precio:     datos.Precio,
 		Estado:     models.EstadoPendiente,
 		VendedorID: vendedorID,
 	})
-	return vehiculo, nil
 }
 
 // ReportarVenta marca como vendido un vehículo publicado del vendedor,
