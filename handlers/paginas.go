@@ -39,9 +39,26 @@ func FormatearPrecio(precio int) string {
 	return "$" + resultado.String()
 }
 
+// avisos son los mensajes que se pueden mostrar después de una acción.
+//
+// La URL solo lleva un código (por ejemplo, /?aviso=registrado), nunca el
+// texto. Así nadie puede fabricar un enlace que muestre un mensaje falso
+// dentro del sitio. Un código que no esté aquí no muestra nada.
+var avisos = map[string]string{
+	"registrado": "Tu cuenta fue creada. Entra a «Mis vehículos» con tu usuario y contraseña para publicar.",
+}
+
+// mostrarPagina muestra una plantilla agregando a sus datos el aviso que
+// corresponda al código "?aviso=" de la URL, si existe.
+func mostrarPagina(c *gin.Context, codigo int, plantilla string, datos gin.H) {
+	// Si el código no existe en el mapa, el resultado es "" y no se muestra nada.
+	datos["Aviso"] = avisos[c.Query("aviso")]
+	c.HTML(codigo, plantilla, datos)
+}
+
 // mostrarError muestra la página de error con el código HTTP indicado.
 func mostrarError(c *gin.Context, codigo int, mensaje string) {
-	c.HTML(codigo, "error.html", gin.H{
+	mostrarPagina(c, codigo, "error.html", gin.H{
 		"Titulo":  "Error",
 		"Codigo":  codigo,
 		"Mensaje": mensaje,

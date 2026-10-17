@@ -18,6 +18,7 @@
     </nav>
   </header>
   <main class="contenido">
+    {{if .Aviso}}<p class="aviso">{{.Aviso}}</p>{{end}}
 {{end}}
 
 {{define "pie"}}

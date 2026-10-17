@@ -17,7 +17,7 @@ func PaginaCatalogo(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "catalogo.html", gin.H{
+	mostrarPagina(c, http.StatusOK, "catalogo.html", gin.H{
 		"Titulo":    "Catálogo",
 		"Vehiculos": catalogo,
 	})
@@ -40,7 +40,7 @@ func PaginaVehiculo(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "vehiculo.html", gin.H{
+	mostrarPagina(c, http.StatusOK, "vehiculo.html", gin.H{
 		"Titulo":   vehiculo.Marca + " " + vehiculo.Modelo,
 		"Vehiculo": vehiculo,
 	})

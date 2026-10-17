@@ -1,0 +1,27 @@
+{{template "encabezado" .}}
+<section class="panel formulario">
+  <h1>Crear cuenta de vendedor</h1>
+
+  {{if .Error}}<p class="alerta">{{.Error}}</p>{{end}}
+
+  <form method="post" action="/registro">
+    <label>
+      Nombre completo
+      <input name="nombre" value="{{.Datos.Nombre}}" required>
+    </label>
+    <label>
+      Nombre de usuario
+      <input name="nombre_usuario" value="{{.Datos.NombreUsuario}}" required autocomplete="username">
+    </label>
+    <label>
+      Teléfono
+      <input name="telefono" type="tel" value="{{.Datos.Telefono}}" required>
+    </label>
+    <label>
+      Contraseña
+      <input name="contrasena" type="password" required autocomplete="new-password">
+    </label>
+    <button type="submit">Crear cuenta</button>
+  </form>
+</section>
+{{template "pie" .}}

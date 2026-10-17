@@ -6,6 +6,8 @@
   --suave: #616e7c;
   --acento: #1d4ed8;
   --borde: #d9dee5;
+  --texto-boton: #ffffff;
+  --peligro: #b91c1c;
 }
 
 /* Modo oscuro: se aplica si el sistema operativo lo tiene activado. */
@@ -17,6 +19,8 @@
     --suave: #9aa5b1;
     --acento: #7aa2ff;
     --borde: #2c333d;
+    --texto-boton: #111418;
+    --peligro: #f87171;
   }
 }
 
@@ -78,3 +82,39 @@ a { color: var(--acento); }
 .error h1 { margin: 0; font-size: 3rem; color: var(--suave); }
 
 .pie { padding: 2rem 1rem; text-align: center; font-size: 0.875rem; color: var(--suave); }
+
+/* Mensajes: aviso de éxito y alerta de error. */
+.aviso, .alerta {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--superficie);
+}
+.aviso { border: 1px solid var(--acento); }
+.alerta { border: 1px solid var(--peligro); color: var(--peligro); }
+
+/* Formularios */
+.formulario { max-width: 480px; }
+.formulario form { display: grid; gap: 1rem; }
+.formulario label { display: grid; gap: 0.25rem; font-weight: 600; }
+
+input {
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+}
+
+button {
+  padding: 0.6rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--texto-boton);
+  background: var(--acento);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover { opacity: 0.9; }
