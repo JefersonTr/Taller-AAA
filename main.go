@@ -118,6 +118,9 @@ func main() {
 		rutasAdmin.DELETE("/usuarios/:id", handlers.EliminarUsuario)
 	}
 
+	// Direcciones inexistentes: página 404 para el navegador, JSON para la API.
+	r.NoRoute(handlers.RutaNoEncontrada)
+
 	// 12. Iniciar el servidor. Si falla (por ejemplo, el puerto está ocupado),
 	//     el programa termina mostrando el motivo.
 	log.Println("AutoMarket escuchando en http://localhost:8080")
