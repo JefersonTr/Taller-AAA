@@ -6,7 +6,7 @@ import (
 )
 
 // ListarPendientes devuelve las publicaciones que esperan aprobación,
-// ordenadas por ID. Las necesita la pantalla de moderación del administrador.
+// ordenadas por ID. La usa la API del administrador.
 func ListarPendientes() []models.Vehiculo {
 	return repository.DB.ListarVehiculosPorEstado(models.EstadoPendiente)
 }
@@ -16,18 +16,13 @@ func ListarPendientes() []models.Vehiculo {
 //
 // Errores: ErrNoEncontrado si no existe; ErrEstadoNoValido si no está pendiente.
 func AutorizarPublicacion(id int) (models.Vehiculo, error) {
-	// Paso 1: buscar la publicación.
 	vehiculo, err := repository.DB.BuscarVehiculoPorID(id)
 	if err != nil {
 		return models.Vehiculo{}, err
 	}
-
-	// Paso 2: regla de negocio, solo se autoriza lo que está pendiente.
 	if vehiculo.Estado != models.EstadoPendiente {
 		return models.Vehiculo{}, ErrEstadoNoValido
 	}
-
-	// Paso 3: cambiar el estado con la función que creamos en la Parte 3.
 	return repository.DB.ActualizarEstadoVehiculo(id, models.EstadoPublicada)
 }
 
@@ -45,17 +40,50 @@ func EliminarPublicacion(id int) error {
 //
 // Errores: ErrNoEncontrado si no existe; ErrAdministradorProtegido si es administrador.
 func EliminarUsuario(id int) error {
-	// Paso 1: buscar al usuario para conocer su rol.
 	usuario, err := repository.DB.BuscarUsuarioPorID(id)
 	if err != nil {
 		return err
 	}
-
-	// Paso 2: regla de negocio, los administradores están protegidos.
 	if usuario.Rol == models.RolAdministrador {
 		return ErrAdministradorProtegido
 	}
-
-	// Paso 3: eliminar al usuario y sus vehículos (lo hace el repositorio).
 	return repository.DB.EliminarUsuario(id)
+}
+
+// PanelModeracion reúne todo lo que muestra la página del administrador.
+type PanelModeracion struct {
+	Pendientes []VehiculoPublico // Esperan autorización
+	Publicados []VehiculoPublico // Están en el catálogo
+	Vendedores []models.Usuario  // Vendedores registrados
+}
+
+// ObtenerPanelModeracion arma el panel de la página de moderación (HU-ADM-01).
+func ObtenerPanelModeracion() (PanelModeracion, error) {
+	pendientes, err := armarListaPublica(repository.DB.ListarVehiculosPorEstado(models.EstadoPendiente))
+	if err != nil {
+		return PanelModeracion{}, err
+	}
+
+	publicados, err := armarListaPublica(repository.DB.ListarVehiculosPorEstado(models.EstadoPublicada))
+	if err != nil {
+		return PanelModeracion{}, err
+	}
+
+	return PanelModeracion{
+		Pendientes: pendientes,
+		Publicados: publicados,
+		Vendedores: listarVendedores(),
+	}, nil
+}
+
+// listarVendedores devuelve solo los usuarios con rol vendedor.
+// Los administradores no aparecen porque no se pueden eliminar.
+func listarVendedores() []models.Usuario {
+	vendedores := make([]models.Usuario, 0)
+	for _, usuario := range repository.DB.ListarUsuarios() {
+		if usuario.Rol == models.RolVendedor {
+			vendedores = append(vendedores, usuario)
+		}
+	}
+	return vendedores
 }

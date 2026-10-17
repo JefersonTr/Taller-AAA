@@ -112,3 +112,26 @@ func TestEliminarUsuario(t *testing.T) {
 		t.Fatal("debería devolver ErrNoEncontrado si no existe")
 	}
 }
+
+func TestObtenerPanelModeracion(t *testing.T) {
+	d := prepararDatos(t)
+
+	panel, err := ObtenerPanelModeracion()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Una publicación en cada lista, con el nombre de usuario del vendedor
+	// disponible para mostrarlo.
+	if len(panel.Pendientes) != 1 || panel.Pendientes[0].ID != d.pendiente.ID {
+		t.Fatal("el panel debe listar la publicación pendiente")
+	}
+	if len(panel.Publicados) != 1 || panel.Publicados[0].ID != d.publicado.ID {
+		t.Fatal("el panel debe listar la publicación del catálogo")
+	}
+
+	// Solo la vendedora; el administrador no aparece.
+	if len(panel.Vendedores) != 1 || panel.Vendedores[0].ID != d.vendedor.ID {
+		t.Fatal("el panel debe listar solo a los vendedores")
+	}
+}
