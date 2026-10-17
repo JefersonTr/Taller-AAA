@@ -49,9 +49,12 @@ func FormatearPrecio(precio int) string {
 // texto. Así nadie puede fabricar un enlace que muestre un mensaje falso
 // dentro del sitio. Un código que no esté aquí no muestra nada.
 var avisos = map[string]string{
-	"registrado": "Tu cuenta fue creada. Entra a «Mis vehículos» con tu usuario y contraseña para publicar.",
-	"publicado":  "Tu vehículo quedó pendiente de aprobación. Aparecerá en el catálogo cuando un administrador lo autorice.",
-	"vendido":    "Venta reportada. El vehículo salió del catálogo.",
+	"registrado":            "Tu cuenta fue creada. Entra a «Mis vehículos» con tu usuario y contraseña para publicar.",
+	"publicado":             "Tu vehículo quedó pendiente de aprobación. Aparecerá en el catálogo cuando un administrador lo autorice.",
+	"vendido":               "Venta reportada. El vehículo salió del catálogo.",
+	"autorizado":            "Publicación autorizada. Ya es visible en el catálogo.",
+	"publicacion-eliminada": "Publicación eliminada.",
+	"usuario-eliminado":     "Vendedor eliminado junto con todas sus publicaciones.",
 }
 
 // mostrarPagina muestra una plantilla agregando a sus datos el aviso que

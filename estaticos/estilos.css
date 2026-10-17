@@ -145,3 +145,8 @@ h2 { margin-top: 1.5rem; }
 }
 .estado-publicada { color: var(--acento); border-color: var(--acento); }
 .estado-vendido { color: var(--suave); }
+
+/* Botones de acción del administrador. */
+.acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.acciones form { margin: 0; }
+.boton-peligro { background: var(--peligro); }
