@@ -1,0 +1,29 @@
+{{define "encabezado"}}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Titulo}} · AutoMarket</title>
+  <link rel="stylesheet" href="/estaticos/estilos.css">
+</head>
+<body>
+  <header class="barra">
+    <a class="marca" href="/">AutoMarket</a>
+    <nav>
+      <a href="/">Catálogo</a>
+      <a href="/registro">Vender mi carro</a>
+      <a href="/vendedor">Mis vehículos</a>
+      <a href="/admin">Moderación</a>
+    </nav>
+  </header>
+  <main class="contenido">
+    {{if .Aviso}}<p class="aviso">{{.Aviso}}</p>{{end}}
+{{end}}
+
+{{define "pie"}}
+  </main>
+  <footer class="pie">AutoMarket · Taller AAA</footer>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,61 @@
+{{template "encabezado" .}}
+<h1>Moderación</h1>
+
+<h2>Publicaciones pendientes</h2>
+<div class="lista">
+  {{range .Panel.Pendientes}}
+  <article class="fila">
+    <div>
+      <strong>{{.Marca}} {{.Modelo}}</strong>
+      <span class="precio-pequeno">{{precio .Precio}}</span>
+      <div class="suave">Vendedor: {{.Vendedor.Nombre}}</div>
+    </div>
+    <div class="acciones">
+      <form method="post" action="/admin/vehiculos/{{.ID}}/autorizacion">
+        <button type="submit">Autorizar</button>
+      </form>
+      <form method="post" action="/admin/vehiculos/{{.ID}}/eliminacion">
+        <button type="submit" class="boton-peligro">Eliminar</button>
+      </form>
+    </div>
+  </article>
+  {{else}}
+  <p class="suave">No hay publicaciones pendientes.</p>
+  {{end}}
+</div>
+
+<h2>Publicaciones en el catálogo</h2>
+<div class="lista">
+  {{range .Panel.Publicados}}
+  <article class="fila">
+    <div>
+      <strong>{{.Marca}} {{.Modelo}}</strong>
+      <span class="precio-pequeno">{{precio .Precio}}</span>
+      <div class="suave">Vendedor: {{.Vendedor.Nombre}}</div>
+    </div>
+    <form method="post" action="/admin/vehiculos/{{.ID}}/eliminacion">
+      <button type="submit" class="boton-peligro">Eliminar</button>
+    </form>
+  </article>
+  {{else}}
+  <p class="suave">No hay publicaciones en el catálogo.</p>
+  {{end}}
+</div>
+
+<h2>Vendedores</h2>
+<div class="lista">
+  {{range .Panel.Vendedores}}
+  <article class="fila">
+    <div>
+      <strong>{{.Nombre}}</strong> <span class="suave">({{.NombreUsuario}})</span>
+      <div class="suave">Teléfono: {{.Telefono}}</div>
+    </div>
+    <form method="post" action="/admin/usuarios/{{.ID}}/eliminacion">
+      <button type="submit" class="boton-peligro">Eliminar vendedor</button>
+    </form>
+  </article>
+  {{else}}
+  <p class="suave">No hay vendedores registrados.</p>
+  {{end}}
+</div>
+{{template "pie" .}}

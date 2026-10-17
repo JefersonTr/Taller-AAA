@@ -27,21 +27,7 @@ type VehiculoPublico struct {
 // ListarCatalogo devuelve los vehículos publicados con el contacto de su
 // vendedor (HU-VIS-01).
 func ListarCatalogo() ([]VehiculoPublico, error) {
-	vehiculos := repository.DB.ListarVehiculosPorEstado(models.EstadoPublicada)
-
-	catalogo := make([]VehiculoPublico, 0, len(vehiculos))
-	for _, vehiculo := range vehiculos {
-		publico, err := armarVehiculoPublico(vehiculo)
-		if errors.Is(err, ErrNoEncontrado) {
-			// El vendedor ya no existe: el vehículo no se muestra.
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		catalogo = append(catalogo, publico)
-	}
-	return catalogo, nil
+	return armarListaPublica(repository.DB.ListarVehiculosPorEstado(models.EstadoPublicada))
 }
 
 // ConsultarVehiculo devuelve un vehículo publicado con el contacto de su
@@ -58,6 +44,24 @@ func ConsultarVehiculo(id int) (VehiculoPublico, error) {
 		return VehiculoPublico{}, ErrNoEncontrado
 	}
 	return armarVehiculoPublico(vehiculo)
+}
+
+// armarListaPublica agrega el contacto del vendedor a cada vehículo de la
+// lista. Los vehículos cuyo vendedor ya no existe se omiten.
+func armarListaPublica(vehiculos []models.Vehiculo) ([]VehiculoPublico, error) {
+	lista := make([]VehiculoPublico, 0, len(vehiculos))
+	for _, vehiculo := range vehiculos {
+		publico, err := armarVehiculoPublico(vehiculo)
+		if errors.Is(err, ErrNoEncontrado) {
+			// El vendedor ya no existe: el vehículo no se muestra.
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		lista = append(lista, publico)
+	}
+	return lista, nil
 }
 
 // armarVehiculoPublico combina un vehículo con el contacto de su vendedor.

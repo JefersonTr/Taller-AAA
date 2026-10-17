@@ -20,46 +20,81 @@ import (
 var rutaAuditoria = filepath.Join("datos", "auditoria.jsonl")
 
 func main() {
-	// 1. Crear la base de datos en memoria y el administrador inicial.
+	// 1. Crear la base de datos en memoria.
 	repository.InicializarBD()
-	// Cargar el registro de auditoría y verificar su integridad.
-	// Si fue alterado, el servidor NO arranca ("fallar cerrado").
+
+	// 2. Cargar el registro de auditoría y verificar su integridad.
+	//    Si fue alterado, el servidor NO arranca ("fallar cerrado").
 	if err := repository.DB.AbrirArchivoAuditoria(rutaAuditoria); err != nil {
 		log.Fatalf("no se pudo cargar el registro de auditoría: %v", err)
 	}
+
+	// 3. Crear el administrador inicial desde las variables de entorno.
 	crearAdministradorInicial()
 
-	// 2. Crear el servicio de autenticación con el repositorio real.
-	//    repository.DB cumple la interfaz RepositorioUsuarios porque tiene
-	//    el método BuscarUsuarioPorNombreUsuario.
+	// 4. Crear el servicio de autenticación con el repositorio real.
 	servicioAutenticacion := auth.NuevoServicio(repository.DB)
 
-	// 3. Crear el servidor SIN middlewares predeterminados.
+	// 5. Crear el servidor SIN middlewares predeterminados.
 	//    gin.Default() agrega su propio logger, que duplicaría el Accounting.
 	r := gin.New()
 
-	// 4. No confiar en ningún proxy. Así c.ClientIP() usa la IP real de la
-	//    conexión y no un header X-Forwarded-For que el cliente puede falsificar.
+	// No confiar en ningún proxy. Así c.ClientIP() usa la IP real de la
+	// conexión y no un header X-Forwarded-For que el cliente puede falsificar.
 	if err := r.SetTrustedProxies(nil); err != nil {
 		log.Fatalf("no se pudo configurar los proxies de confianza: %v", err)
 	}
 
-	// 5. Middlewares globales. El orden importa:
-	//    - Accounting primero, para registrar TODAS las operaciones.
-	//    - Recovery después: si un handler falla de forma inesperada,
-	//      Recovery responde 500 y Accounting alcanza a registrarlo.
-	r.Use(middleware.Accounting(), gin.Recovery())
+	// Middlewares globales. El orden importa:
+	//   - Accounting primero, para registrar TODAS las operaciones,
+	//     incluidas las que rechacen los demás.
+	//   - Recovery: si un handler falla de forma inesperada, responde 500
+	//     y Accounting alcanza a registrarlo.
+	//   - ProteccionCSRF: rechaza formularios enviados desde otros sitios.
+	r.Use(middleware.Accounting(), gin.Recovery(), middleware.ProteccionCSRF())
 
-	// 6. Rutas públicas.
-	//    El registro se declara directamente en "r" y no en el grupo de abajo,
-	//    por eso NO le aplican la autenticación ni la autorización del grupo.
+	// 6. Frontend: plantillas HTML y archivos estáticos (hoja de estilos).
+	handlers.ConfigurarPlantillas(r, "plantillas/*.html")
+	r.Static("/estaticos", "./estaticos")
+
+	// 7. API pública: registro de vendedores y catálogo (HU-VEN-01, HU-VIS-01).
 	r.POST("/api/vendedor/registro", handlers.RegistrarVendedor)
-
-	// Catálogo del visitante (HU-VIS-01): no exige autenticación.
 	r.GET("/api/vehiculos", handlers.ListarCatalogo)
 	r.GET("/api/vehiculos/:id", handlers.ConsultarVehiculo)
 
-	// 7. Rutas del vendedor: exigen estar autenticado y tener rol vendedor.
+	// 8. Páginas públicas: catálogo, detalle y registro de vendedores.
+	r.GET("/", handlers.PaginaCatalogo)
+	r.GET("/vehiculos/:id", handlers.PaginaVehiculo)
+	r.GET("/registro", handlers.PaginaRegistro)
+	r.POST("/registro", handlers.EnviarRegistro)
+
+	// 9. Páginas del vendedor (HU-VEN-01): mismos middlewares que su API.
+	//    Al entrar sin credenciales, el navegador muestra su ventana de login.
+	paginasVendedor := r.Group("/vendedor")
+	paginasVendedor.Use(
+		middleware.RequiereAutenticacion(servicioAutenticacion),
+		middleware.RequiereRol(models.RolVendedor),
+	)
+	{
+		paginasVendedor.GET("", handlers.PaginaVendedor)
+		paginasVendedor.POST("/vehiculos", handlers.EnviarPublicacion)
+		paginasVendedor.POST("/vehiculos/:id/venta", handlers.EnviarVenta)
+	}
+
+	// Páginas del administrador (HU-ADM-01): mismos middlewares que su API.
+	paginasAdmin := r.Group("/admin")
+	paginasAdmin.Use(
+		middleware.RequiereAutenticacion(servicioAutenticacion),
+		middleware.RequiereRol(models.RolAdministrador),
+	)
+	{
+		paginasAdmin.GET("", handlers.PaginaModeracion)
+		paginasAdmin.POST("/vehiculos/:id/autorizacion", handlers.EnviarAutorizacion)
+		paginasAdmin.POST("/vehiculos/:id/eliminacion", handlers.EnviarEliminacionVehiculo)
+		paginasAdmin.POST("/usuarios/:id/eliminacion", handlers.EnviarEliminacionUsuario)
+	}
+
+	// 10. API del vendedor: exige estar autenticado y tener rol vendedor.
 	rutasVendedor := r.Group("/api/vendedor")
 	rutasVendedor.Use(
 		middleware.RequiereAutenticacion(servicioAutenticacion), // ¿Quién eres? (401)
@@ -70,8 +105,7 @@ func main() {
 		rutasVendedor.PUT("/vehiculos/:id/venta", handlers.ReportarVenta)
 	}
 
-	// Rutas del administrador (HU-ADM-01): exigen estar autenticado
-	// y tener rol administrador.
+	// 11. API del administrador (HU-ADM-01): exige rol administrador.
 	rutasAdmin := r.Group("/api/admin")
 	rutasAdmin.Use(
 		middleware.RequiereAutenticacion(servicioAutenticacion), // ¿Quién eres? (401)
@@ -84,8 +118,11 @@ func main() {
 		rutasAdmin.DELETE("/usuarios/:id", handlers.EliminarUsuario)
 	}
 
-	// 8. Iniciar el servidor. Si falla (por ejemplo, el puerto está ocupado),
-	//    el programa termina mostrando el motivo.
+	// Direcciones inexistentes: página 404 para el navegador, JSON para la API.
+	r.NoRoute(handlers.RutaNoEncontrada)
+
+	// 12. Iniciar el servidor. Si falla (por ejemplo, el puerto está ocupado),
+	//     el programa termina mostrando el motivo.
 	log.Println("AutoMarket escuchando en http://localhost:8080")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("no se pudo iniciar el servidor: %v", err)

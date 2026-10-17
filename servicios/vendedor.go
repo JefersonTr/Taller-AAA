@@ -124,3 +124,9 @@ func ReportarVenta(vendedorID, vehiculoID int) (models.Vehiculo, error) {
 
 	return repository.DB.ActualizarEstadoVehiculo(vehiculoID, models.EstadoVendido)
 }
+
+// ListarVehiculosDeVendedor devuelve todas las publicaciones del vendedor,
+// en cualquier estado. La usa la página "Mis vehículos".
+func ListarVehiculosDeVendedor(vendedorID int) []models.Vehiculo {
+	return repository.DB.ListarVehiculosPorVendedor(vendedorID)
+}

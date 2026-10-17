@@ -1,0 +1,48 @@
+{{template "encabezado" .}}
+<h1>Mis vehículos</h1>
+<p class="suave">Sesión de {{.Vendedor.Nombre}} ({{.Vendedor.NombreUsuario}})</p>
+
+{{if .Error}}<p class="alerta">{{.Error}}</p>{{end}}
+
+<section class="panel formulario">
+  <h2>Publicar un vehículo</h2>
+  <form method="post" action="/vendedor/vehiculos">
+    <label>
+      Marca
+      <input name="marca" value="{{.Datos.Marca}}" required>
+    </label>
+    <label>
+      Modelo
+      <input name="modelo" value="{{.Datos.Modelo}}" required>
+    </label>
+    <label>
+      Precio en pesos
+      <input name="precio" type="number" min="1" value="{{if .Datos.Precio}}{{.Datos.Precio}}{{end}}" required>
+    </label>
+    <button type="submit">Publicar</button>
+  </form>
+  <p class="suave">Las publicaciones quedan pendientes hasta que un administrador las autorice.</p>
+</section>
+
+<h2>Mis publicaciones</h2>
+{{if .Vehiculos}}
+<div class="lista">
+  {{range .Vehiculos}}
+  <article class="fila">
+    <div>
+      <strong>{{.Marca}} {{.Modelo}}</strong>
+      <span class="precio-pequeno">{{precio .Precio}}</span>
+    </div>
+    <span class="estado estado-{{.Estado}}">{{.Estado}}</span>
+    {{if eq .Estado "publicada"}}
+    <form method="post" action="/vendedor/vehiculos/{{.ID}}/venta">
+      <button type="submit">Reportar venta</button>
+    </form>
+    {{end}}
+  </article>
+  {{end}}
+</div>
+{{else}}
+<p class="suave">Aún no has publicado vehículos.</p>
+{{end}}
+{{template "pie" .}}

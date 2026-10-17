@@ -1,0 +1,18 @@
+{{template "encabezado" .}}
+<h1>Vehículos en venta</h1>
+
+{{if .Vehiculos}}
+<div class="tarjetas">
+  {{range .Vehiculos}}
+  <a class="tarjeta" href="/vehiculos/{{.ID}}">
+    <h2>{{.Marca}} {{.Modelo}}</h2>
+    <p class="precio">{{precio .Precio}}</p>
+    <p class="suave">Vende: {{.Vendedor.Nombre}}</p>
+  </a>
+  {{end}}
+</div>
+{{else}}
+<p class="suave">Todavía no hay vehículos publicados.</p>
+{{end}}
+
+{{template "pie" .}}

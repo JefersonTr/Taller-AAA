@@ -1,0 +1,18 @@
+{{template "encabezado" .}}
+
+{{with .Vehiculo}}
+<article class="panel">
+  <h1>{{.Marca}} {{.Modelo}}</h1>
+  <p class="precio">{{precio .Precio}}</p>
+
+  <section class="contacto">
+    <h2>Contacto del vendedor</h2>
+    <p><strong>{{.Vendedor.Nombre}}</strong></p>
+    <p>Teléfono: {{.Vendedor.Telefono}}</p>
+  </section>
+
+  <p><a href="/">← Volver al catálogo</a></p>
+</article>
+{{end}}
+
+{{template "pie" .}}
