@@ -44,8 +44,7 @@ func RequiereAutenticacion(autenticador Autenticador) gin.HandlerFunc {
 		}
 		if err != nil {
 			// Falla del sistema, no del usuario: no damos detalles al cliente.
-			c.AbortWithStatusJSON(http.StatusInternalServerError,
-				gin.H{"error": "error interno del servidor"})
+			ResponderError(c, http.StatusInternalServerError, "error interno del servidor")
 			return
 		}
 
@@ -60,11 +59,10 @@ func RequiereAutenticacion(autenticador Autenticador) gin.HandlerFunc {
 //
 // El estándar HTTP exige que toda respuesta 401 incluya el header
 // WWW-Authenticate, que le indica al cliente qué método de autenticación
-// usar (aquí, Basic). Por eso un navegador muestra una ventana de login.
+// usar (aquí, Basic). Por eso un navegador muestra su ventana de login.
 func rechazarNoAutenticado(c *gin.Context) {
 	c.Header("WWW-Authenticate", `Basic realm="AutoMarket"`)
-	c.AbortWithStatusJSON(http.StatusUnauthorized,
-		gin.H{"error": "autenticación requerida"})
+	ResponderError(c, http.StatusUnauthorized, "autenticación requerida")
 }
 
 // UsuarioActual devuelve el usuario autenticado de la petición.

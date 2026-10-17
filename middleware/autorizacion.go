@@ -27,8 +27,7 @@ func RequiereRol(rolPermitido models.Rol) gin.HandlerFunc {
 
 		// Paso 2: comparar el rol del usuario con el rol que exige la ruta.
 		if usuario.Rol != rolPermitido {
-			c.AbortWithStatusJSON(http.StatusForbidden,
-				gin.H{"error": "no tiene permisos para esta operación"})
+			ResponderError(c, http.StatusForbidden, "no tiene permisos para esta operación")
 			return
 		}
 
