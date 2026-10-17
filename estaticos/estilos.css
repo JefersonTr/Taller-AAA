@@ -118,3 +118,30 @@ button {
   cursor: pointer;
 }
 button:hover { opacity: 0.9; }
+
+/* Lista de publicaciones del vendedor y del administrador. */
+h2 { margin-top: 1.5rem; }
+.lista { display: grid; gap: 0.75rem; }
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+}
+.fila form { margin: 0; }
+.precio-pequeno { margin-left: 0.5rem; font-weight: 600; color: var(--acento); }
+
+/* Etiqueta de estado de una publicación. */
+.estado {
+  padding: 0.15rem 0.6rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+}
+.estado-publicada { color: var(--acento); border-color: var(--acento); }
+.estado-vendido { color: var(--suave); }

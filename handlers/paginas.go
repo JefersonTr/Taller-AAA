@@ -2,8 +2,12 @@ package handlers
 
 import (
 	"html/template"
+	"net/http"
 	"strconv"
 	"strings"
+
+	"automarket/middleware"
+	"automarket/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -46,6 +50,8 @@ func FormatearPrecio(precio int) string {
 // dentro del sitio. Un código que no esté aquí no muestra nada.
 var avisos = map[string]string{
 	"registrado": "Tu cuenta fue creada. Entra a «Mis vehículos» con tu usuario y contraseña para publicar.",
+	"publicado":  "Tu vehículo quedó pendiente de aprobación. Aparecerá en el catálogo cuando un administrador lo autorice.",
+	"vendido":    "Venta reportada. El vehículo salió del catálogo.",
 }
 
 // mostrarPagina muestra una plantilla agregando a sus datos el aviso que
@@ -70,4 +76,15 @@ func mostrarError(c *gin.Context, codigo int, mensaje string) {
 func mostrarErrorServicio(c *gin.Context, err error) {
 	codigo, mensaje := traducirError(err)
 	mostrarError(c, codigo, mensaje)
+}
+
+// leerUsuarioDePagina obtiene el usuario autenticado de la petición.
+// Si no lo hay (una ruta configurada sin autenticación), muestra la página
+// de error 401 y devuelve false ("fallar cerrado").
+func leerUsuarioDePagina(c *gin.Context) (models.Usuario, bool) {
+	usuario, autenticado := middleware.UsuarioActual(c)
+	if !autenticado {
+		mostrarError(c, http.StatusUnauthorized, "autenticación requerida")
+	}
+	return usuario, autenticado
 }
