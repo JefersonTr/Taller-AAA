@@ -113,3 +113,14 @@ func TestListarVehiculosPorVendedor(t *testing.T) {
 		t.Fatal("un vendedor sin vehículos debería recibir una lista vacía")
 	}
 }
+
+func TestListarUsuarios(t *testing.T) {
+	InicializarBD()
+	DB.GuardarUsuario(models.Usuario{NombreUsuario: "admin", Rol: models.RolAdministrador})
+	DB.GuardarUsuario(models.Usuario{NombreUsuario: "ana", Rol: models.RolVendedor})
+
+	lista := DB.ListarUsuarios()
+	if len(lista) != 2 || lista[0].NombreUsuario != "admin" || lista[1].NombreUsuario != "ana" {
+		t.Fatal("debería devolver todos los usuarios, ordenados por ID")
+	}
+}

@@ -104,6 +104,22 @@ func (db *BaseDatosMemoria) BuscarUsuarioPorID(id int) (models.Usuario, error) {
 	return usuario, nil
 }
 
+// ListarUsuarios devuelve todos los usuarios registrados, ordenados por ID.
+func (db *BaseDatosMemoria) ListarUsuarios() []models.Usuario {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	// La capacidad len(db.usuarios) reserva el espacio exacto de una vez.
+	lista := make([]models.Usuario, 0, len(db.usuarios))
+	for _, usuario := range db.usuarios {
+		lista = append(lista, usuario)
+	}
+	slices.SortFunc(lista, func(a, b models.Usuario) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+	return lista
+}
+
 // EliminarUsuario elimina al usuario y TODOS sus vehículos.
 // Devuelve ErrNoEncontrado si el usuario no existe.
 //
