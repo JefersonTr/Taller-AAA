@@ -203,10 +203,31 @@ func (db *BaseDatosMemoria) ListarVehiculosPorEstado(estado models.EstadoVehicul
 			lista = append(lista, vehiculo)
 		}
 	}
+	ordenarPorID(lista)
+	return lista
+}
 
-	// Los mapas en Go no tienen orden fijo; ordenamos por ID de menor a mayor.
+// ListarVehiculosPorVendedor devuelve todos los vehículos de un vendedor,
+// en cualquier estado, ordenados por ID.
+func (db *BaseDatosMemoria) ListarVehiculosPorVendedor(vendedorID int) []models.Vehiculo {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	lista := make([]models.Vehiculo, 0)
+	for _, vehiculo := range db.vehiculos {
+		if vehiculo.VendedorID == vendedorID {
+			lista = append(lista, vehiculo)
+		}
+	}
+	ordenarPorID(lista)
+	return lista
+}
+
+// ordenarPorID ordena una lista de vehículos por ID, de menor a mayor.
+// Los mapas en Go no tienen un orden fijo, así que sin esto las listas
+// cambiarían de orden en cada consulta.
+func ordenarPorID(lista []models.Vehiculo) {
 	slices.SortFunc(lista, func(a, b models.Vehiculo) int {
 		return cmp.Compare(a.ID, b.ID)
 	})
-	return lista
 }

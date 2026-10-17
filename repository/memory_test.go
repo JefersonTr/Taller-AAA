@@ -93,4 +93,23 @@ func TestEliminarUsuario(t *testing.T) {
 	if err := DB.EliminarUsuario(99); !errors.Is(err, ErrNoEncontrado) {
 		t.Fatal("debería devolver ErrNoEncontrado para un usuario inexistente")
 	}
+
+}
+
+func TestListarVehiculosPorVendedor(t *testing.T) {
+	InicializarBD()
+	DB.GuardarVehiculo(models.Vehiculo{Marca: "Renault", VendedorID: 1}) // ID 1
+	DB.GuardarVehiculo(models.Vehiculo{Marca: "Kia", VendedorID: 2})     // ID 2
+	DB.GuardarVehiculo(models.Vehiculo{Marca: "Mazda", VendedorID: 1})   // ID 3
+
+	// Caso 1: solo los del vendedor 1, ordenados por ID.
+	lista := DB.ListarVehiculosPorVendedor(1)
+	if len(lista) != 2 || lista[0].ID != 1 || lista[1].ID != 3 {
+		t.Fatal("debería devolver solo los vehículos del vendedor 1, ordenados por ID")
+	}
+
+	// Caso 2: un vendedor sin vehículos recibe una lista vacía.
+	if lista := DB.ListarVehiculosPorVendedor(99); len(lista) != 0 {
+		t.Fatal("un vendedor sin vehículos debería recibir una lista vacía")
+	}
 }
