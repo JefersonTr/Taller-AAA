@@ -81,6 +81,19 @@ func main() {
 		paginasVendedor.POST("/vehiculos/:id/venta", handlers.EnviarVenta)
 	}
 
+	// Páginas del administrador (HU-ADM-01): mismos middlewares que su API.
+	paginasAdmin := r.Group("/admin")
+	paginasAdmin.Use(
+		middleware.RequiereAutenticacion(servicioAutenticacion),
+		middleware.RequiereRol(models.RolAdministrador),
+	)
+	{
+		paginasAdmin.GET("", handlers.PaginaModeracion)
+		paginasAdmin.POST("/vehiculos/:id/autorizacion", handlers.EnviarAutorizacion)
+		paginasAdmin.POST("/vehiculos/:id/eliminacion", handlers.EnviarEliminacionVehiculo)
+		paginasAdmin.POST("/usuarios/:id/eliminacion", handlers.EnviarEliminacionUsuario)
+	}
+
 	// 10. API del vendedor: exige estar autenticado y tener rol vendedor.
 	rutasVendedor := r.Group("/api/vendedor")
 	rutasVendedor.Use(
