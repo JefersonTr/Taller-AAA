@@ -5,6 +5,11 @@
 <div class="tarjetas">
   {{range .Vehiculos}}
   <a class="tarjeta" href="/vehiculos/{{.ID}}">
+    {{if .Imagenes}}
+    <img class="portada" src="/imagenes/{{index .Imagenes 0}}" alt="Foto de {{.Marca}} {{.Modelo}}" loading="lazy">
+    {{else}}
+    <div class="portada sin-foto">Sin foto</div>
+    {{end}}
     <h2>{{.Marca}} {{.Modelo}}</h2>
     <p class="precio">{{precio .Precio}}</p>
     <p class="suave">Vende: {{.Vendedor.Nombre}}</p>

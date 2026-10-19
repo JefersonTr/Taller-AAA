@@ -5,10 +5,11 @@
 <div class="lista">
   {{range .Panel.Pendientes}}
   <article class="fila">
-    <div>
+    <div class="crece">
       <strong>{{.Marca}} {{.Modelo}}</strong>
       <span class="precio-pequeno">{{precio .Precio}}</span>
       <div class="suave">Vendedor: {{.Vendedor.Nombre}}</div>
+      {{template "miniaturas" .Imagenes}}
     </div>
     <div class="acciones">
       <form method="post" action="/admin/vehiculos/{{.ID}}/autorizacion">
@@ -28,10 +29,11 @@
 <div class="lista">
   {{range .Panel.Publicados}}
   <article class="fila">
-    <div>
+    <div class="crece">
       <strong>{{.Marca}} {{.Modelo}}</strong>
       <span class="precio-pequeno">{{precio .Precio}}</span>
       <div class="suave">Vendedor: {{.Vendedor.Nombre}}</div>
+      {{template "miniaturas" .Imagenes}}
     </div>
     <form method="post" action="/admin/vehiculos/{{.ID}}/eliminacion">
       <button type="submit" class="boton-peligro">Eliminar</button>
@@ -59,3 +61,17 @@
   {{end}}
 </div>
 {{template "pie" .}}
+
+{{define "miniaturas"}}
+{{if .}}
+<div class="miniaturas">
+  {{range .}}
+  <a href="/imagenes/{{.}}" target="_blank" rel="noopener">
+    <img class="miniatura" src="/imagenes/{{.}}" alt="Foto para revisar">
+  </a>
+  {{end}}
+</div>
+{{else}}
+<div class="suave">Sin fotos</div>
+{{end}}
+{{end}}
