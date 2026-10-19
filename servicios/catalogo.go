@@ -22,6 +22,7 @@ type VehiculoPublico struct {
 	Modelo   string           `json:"modelo"`
 	Precio   int              `json:"precio"`
 	Vendedor ContactoVendedor `json:"vendedor"`
+	Imagenes []string         `json:"imagenes"`
 }
 
 // ListarCatalogo devuelve los vehículos publicados con el contacto de su
@@ -80,5 +81,6 @@ func armarVehiculoPublico(vehiculo models.Vehiculo) (VehiculoPublico, error) {
 			Nombre:   vendedor.Nombre,
 			Telefono: vendedor.Telefono,
 		},
+		Imagenes: vehiculo.Imagenes,
 	}, nil
 }

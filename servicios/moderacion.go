@@ -1,6 +1,7 @@
 package servicios
 
 import (
+	"automarket/imagenes"
 	"automarket/models"
 	"automarket/repository"
 )
@@ -26,14 +27,29 @@ func AutorizarPublicacion(id int) (models.Vehiculo, error) {
 	return repository.DB.ActualizarEstadoVehiculo(id, models.EstadoPublicada)
 }
 
-// EliminarPublicacion elimina una publicación, sin importar su estado.
+// EliminarPublicacion elimina una publicación, sin importar su estado,
+// junto con sus fotos.
 //
 // Errores: ErrNoEncontrado si no existe.
 func EliminarPublicacion(id int) error {
-	return repository.DB.EliminarVehiculo(id)
+	// Se busca primero para saber qué fotos borrar.
+	vehiculo, err := repository.DB.BuscarVehiculoPorID(id)
+	if err != nil {
+		return err
+	}
+
+	// Primero los datos, después los archivos. Si borrar los datos falla,
+	// las fotos siguen ahí y la publicación sigue completa. Al revés, la
+	// publicación quedaría apuntando a fotos que ya no existen.
+	if err := repository.DB.EliminarVehiculo(id); err != nil {
+		return err
+	}
+	imagenes.Eliminar(vehiculo.Imagenes)
+	return nil
 }
 
-// EliminarUsuario elimina a un vendedor junto con todas sus publicaciones.
+// EliminarUsuario elimina a un vendedor junto con todas sus publicaciones
+// y sus fotos.
 //
 // Los administradores no se pueden eliminar: si el único administrador
 // se eliminara, nadie podría volver a moderar la plataforma.
@@ -47,7 +63,18 @@ func EliminarUsuario(id int) error {
 	if usuario.Rol == models.RolAdministrador {
 		return ErrAdministradorProtegido
 	}
-	return repository.DB.EliminarUsuario(id)
+
+	// Se anotan las fotos de todas sus publicaciones ANTES de eliminarlo.
+	var fotos []string
+	for _, vehiculo := range repository.DB.ListarVehiculosPorVendedor(id) {
+		fotos = append(fotos, vehiculo.Imagenes...)
+	}
+
+	if err := repository.DB.EliminarUsuario(id); err != nil {
+		return err
+	}
+	imagenes.Eliminar(fotos)
+	return nil
 }
 
 // PanelModeracion reúne todo lo que muestra la página del administrador.
