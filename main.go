@@ -8,6 +8,7 @@ import (
 
 	"automarket/auth"
 	"automarket/handlers"
+	"automarket/imagenes"
 	"automarket/middleware"
 	"automarket/models"
 	"automarket/repository"
@@ -20,19 +21,24 @@ import (
 var (
 	rutaAuditoria = filepath.Join("datos", "auditoria.jsonl")
 	rutaDatos     = filepath.Join("datos", "datos.json")
+	rutaImagenes  = filepath.Join("datos", "imagenes")
 )
 
 func main() {
 	// 1. Crear la base de datos en memoria.
 	repository.InicializarBD()
 
-	// 2. Cargar los datos guardados: la auditoría (verificando su integridad)
-	//    y los usuarios y vehículos. Si algo falla, el servidor NO arranca.
+	// 2. Cargar los datos guardados: la auditoría (verificando su integridad),
+	//    los usuarios y vehículos, y la carpeta de fotos.
+	//    Si algo falla, el servidor NO arranca.
 	if err := repository.DB.AbrirArchivoAuditoria(rutaAuditoria); err != nil {
 		log.Fatalf("no se pudo cargar el registro de auditoría: %v", err)
 	}
 	if err := repository.DB.AbrirArchivoDatos(rutaDatos); err != nil {
 		log.Fatalf("no se pudieron cargar los datos: %v", err)
+	}
+	if err := imagenes.Configurar(rutaImagenes); err != nil {
+		log.Fatalf("no se pudo preparar la carpeta de imágenes: %v", err)
 	}
 
 	// 3. Crear el administrador inicial, si todavía no existe.
@@ -59,9 +65,12 @@ func main() {
 	//   - ProteccionCSRF: rechaza formularios enviados desde otros sitios.
 	r.Use(middleware.Accounting(), gin.Recovery(), middleware.ProteccionCSRF())
 
-	// 6. Frontend: plantillas HTML y archivos estáticos (hoja de estilos).
+	// 6. Frontend: plantillas HTML, hoja de estilos y fotos de los vehículos.
+	//    r.Static no muestra la lista de archivos de la carpeta y no permite
+	//    salir de ella con rutas como "../".
 	handlers.ConfigurarPlantillas(r, "plantillas/*.html")
 	r.Static("/estaticos", "./estaticos")
+	r.Static("/imagenes", rutaImagenes)
 
 	// 7. API pública: registro de vendedores y catálogo (HU-VEN-01, HU-VIS-01).
 	r.POST("/api/vendedor/registro", handlers.RegistrarVendedor)

@@ -5,6 +5,16 @@
   <h1>{{.Marca}} {{.Modelo}}</h1>
   <p class="precio">{{precio .Precio}}</p>
 
+  {{if .Imagenes}}
+  <div class="galeria">
+    {{range .Imagenes}}
+    <a href="/imagenes/{{.}}" target="_blank" rel="noopener">
+      <img src="/imagenes/{{.}}" alt="Foto del vehículo" loading="lazy">
+    </a>
+    {{end}}
+  </div>
+  {{end}}
+
   <section class="contacto">
     <h2>Contacto del vendedor</h2>
     <p><strong>{{.Vendedor.Nombre}}</strong></p>

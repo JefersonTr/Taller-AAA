@@ -43,6 +43,7 @@ type Vehiculo struct {
 	Precio     int            `json:"precio"`
 	Estado     EstadoVehiculo `json:"estado"`
 	VendedorID int            `json:"vendedor_id"` // ID del Usuario que publicó el vehículo
+	Imagenes   []string       `json:"imagenes"`    // Nombres de archivo de sus fotos
 }
 
 // RegistroAuditoria guarda la información de una operación ejecutada

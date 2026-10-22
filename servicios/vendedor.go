@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"automarket/auth"
+	"automarket/imagenes"
 	"automarket/models"
 	"automarket/repository"
 )
@@ -43,6 +44,10 @@ type DatosPublicacion struct {
 	Marca  string `json:"marca"`
 	Modelo string `json:"modelo"`
 	Precio int    `json:"precio"`
+
+	// Fotos son los bytes de cada archivo, tal como llegaron. Solo se
+	// envían desde el formulario web; json:"-" impide recibirlas por JSON.
+	Fotos [][]byte `json:"-"`
 }
 
 // validar comprueba que los datos de la publicación sean aceptables.
@@ -52,6 +57,9 @@ func (d DatosPublicacion) validar() error {
 	}
 	if d.Precio <= 0 {
 		return fmt.Errorf("%w: el precio debe ser mayor que cero", ErrDatosInvalidos)
+	}
+	if len(d.Fotos) > imagenes.MaximoFotos {
+		return fmt.Errorf("%w: se permiten máximo %d fotos", ErrDatosInvalidos, imagenes.MaximoFotos)
 	}
 	return nil
 }
@@ -81,21 +89,50 @@ func RegistrarVendedor(datos DatosRegistro) (models.Usuario, error) {
 }
 
 // PublicarVehiculo registra un vehículo en estado pendiente de aprobación,
-// asociado al vendedor indicado (HU-VEN-01).
+// asociado al vendedor indicado, con sus fotos (HU-VEN-01).
 //
-// Errores: ErrDatosInvalidos, o un error de guardado en disco.
+// Es "todo o nada": si una sola foto es inválida, no se guarda nada.
+//
+// Errores: ErrDatosInvalidos (con el motivo y el número de la foto), o un
+// error de guardado en disco.
 func PublicarVehiculo(vendedorID int, datos DatosPublicacion) (models.Vehiculo, error) {
+	// Paso 1: validar los datos y la cantidad de fotos.
 	if err := datos.validar(); err != nil {
 		return models.Vehiculo{}, err
 	}
 
-	return repository.DB.GuardarVehiculo(models.Vehiculo{
+	// Paso 2: procesar TODAS las fotos antes de guardar nada. Si una falla,
+	// todavía no se ha escrito ningún archivo.
+	procesadas := make([][]byte, 0, len(datos.Fotos))
+	for i, foto := range datos.Fotos {
+		limpia, err := imagenes.Procesar(foto)
+		if err != nil {
+			return models.Vehiculo{}, fmt.Errorf("%w: la foto %d %v", ErrDatosInvalidos, i+1, err)
+		}
+		procesadas = append(procesadas, limpia)
+	}
+
+	// Paso 3: guardar los archivos. Si uno falla, Guardar borra los demás.
+	nombres, err := imagenes.Guardar(procesadas)
+	if err != nil {
+		return models.Vehiculo{}, err
+	}
+
+	// Paso 4: guardar el vehículo. Si falla, se borran las fotos para no
+	// dejar archivos que no pertenecen a ninguna publicación.
+	vehiculo, err := repository.DB.GuardarVehiculo(models.Vehiculo{
 		Marca:      datos.Marca,
 		Modelo:     datos.Modelo,
 		Precio:     datos.Precio,
 		Estado:     models.EstadoPendiente,
 		VendedorID: vendedorID,
+		Imagenes:   nombres,
 	})
+	if err != nil {
+		imagenes.Eliminar(nombres)
+		return models.Vehiculo{}, err
+	}
+	return vehiculo, nil
 }
 
 // ReportarVenta marca como vendido un vehículo publicado del vendedor,

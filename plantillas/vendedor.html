@@ -6,7 +6,9 @@
 
 <section class="panel formulario">
   <h2>Publicar un vehículo</h2>
-  <form method="post" action="/vendedor/vehiculos">
+  <!-- enctype="multipart/form-data" es obligatorio para enviar archivos.
+       Sin él, el navegador envía solo el nombre de cada archivo. -->
+  <form method="post" action="/vendedor/vehiculos" enctype="multipart/form-data">
     <label>
       Marca
       <input name="marca" value="{{.Datos.Marca}}" required>
@@ -19,9 +21,21 @@
       Precio en pesos
       <input name="precio" type="number" min="1" value="{{if .Datos.Precio}}{{.Datos.Precio}}{{end}}" required>
     </label>
+    <label>
+      Fotos (opcional)
+      <input name="fotos" type="file" accept="image/jpeg,image/png" multiple>
+      <span class="ayuda">
+        Hasta {{.MaximoFotos}} fotos JPEG o PNG de máximo 5 MB cada una.
+        Para elegir varias, mantén presionada la tecla Ctrl al seleccionarlas.
+        {{if .Error}}Por seguridad, el navegador no conserva las fotos: vuelve a elegirlas.{{end}}
+      </span>
+    </label>
     <button type="submit">Publicar</button>
   </form>
-  <p class="suave">Las publicaciones quedan pendientes hasta que un administrador las autorice.</p>
+  <p class="suave">
+    Las publicaciones quedan pendientes hasta que un administrador las autorice.
+    Las fotos no se pueden cambiar después de publicar.
+  </p>
 </section>
 
 <h2>Mis publicaciones</h2>
@@ -29,9 +43,13 @@
 <div class="lista">
   {{range .Vehiculos}}
   <article class="fila">
-    <div>
+    {{if .Imagenes}}
+    <img class="miniatura" src="/imagenes/{{index .Imagenes 0}}" alt="Foto de {{.Marca}} {{.Modelo}}">
+    {{end}}
+    <div class="crece">
       <strong>{{.Marca}} {{.Modelo}}</strong>
       <span class="precio-pequeno">{{precio .Precio}}</span>
+      <div class="suave">Fotos: {{len .Imagenes}}</div>
     </div>
     <span class="estado estado-{{.Estado}}">{{.Estado}}</span>
     {{if eq .Estado "publicada"}}

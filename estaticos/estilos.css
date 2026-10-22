@@ -150,3 +150,52 @@ h2 { margin-top: 1.5rem; }
 .acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .acciones form { margin: 0; }
 .boton-peligro { background: var(--peligro); }
+
+/* Fotos: portada de las tarjetas del catálogo. */
+.portada {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  margin-bottom: 0.75rem;
+  background: var(--fondo);
+  border-radius: 6px;
+}
+.sin-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--suave);
+  border: 1px dashed var(--borde);
+}
+
+/* Galería del detalle del vehículo. */
+.galeria {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.galeria img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* Miniaturas en "Mis vehículos" y en la moderación. */
+.miniaturas { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.5rem; }
+.miniatura {
+  display: block;
+  width: 64px;
+  height: 48px;
+  object-fit:w cover;
+  border: 1px solid var(--borde);
+  border-radius: 4px;
+}
+.crece { flex: 1; }
+
+/* Texto de ayuda de los formularios y campo de archivos. */
+.ayuda { font-size: 0.875rem; font-weight: 400; color: var(--suave); }
+input[type="file"] { padding: 0.4rem; }
